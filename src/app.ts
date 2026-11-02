@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { SolarSystem, AU_SCALE } from './scene/SolarSystem';
-import { CameraRig } from './scene/CameraRig';
+import { CameraRig, type ViewPreset } from './scene/CameraRig';
+import { Experience } from './ui/Experience';
 import { BODIES, BODY_BY_ID, type Body } from './data/bodies';
 import { J2000, SPEED_PRESETS, centuriesSinceJ2000, dateFromJd, formatDate, jdFromDate } from './core/time';
 
@@ -74,6 +75,10 @@ export class App {
   private speedIndex = 3;
   private playing = true;
   private scrubbing = false;
+  private direction = 1;
+  private experience: Experience;
+  private tourPlayback: { playing: boolean; speed: number } | null = null;
+  private isCinema = false;
 
   private introIndex = -1;
   private introT = 0;
@@ -149,12 +154,68 @@ export class App {
     this.buildQuickbar();
     this.buildLabels();
     this.bindUI();
+    this.updateSpeedLabel();
+    this.updateSizeTags(1);
+    this.syncScrub();
+    this.system.update(this.jd - J2000, centuriesSinceJ2000(this.jd));
+    this.experience = new Experience({
+      select: (id, view) => {
+        this.finishIntro();
+        this.select(id, false);
+        this.following = true;
+        this.els.follow.classList.add('on');
+        this.els.follow.textContent = '正在跟随';
+        this.rig.focus(id, { view });
+      },
+      overview: kind => { this.finishIntro(); this.closePanel(); this.rig.overview(kind); },
+      setDate: jd => { this.jd = jd; this.system.clearTrails(); this.syncScrub(); },
+      reverse: () => { this.direction *= -1; this.system.clearTrails(); return this.direction < 0; },
+      cinema: on => {
+        this.isCinema = on;
+        this.rig.controls.autoRotate = on && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        this.rig.controls.autoRotateSpeed = 0.35;
+      },
+      capture: message => this.capture(message),
+      effects: (bloom, comet) => { this.system.setBloom(bloom); this.system.comet.enabled = comet; },
+      visitComet: () => {
+        this.finishIntro(); this.closePanel();
+        this.jd = J2000; this.system.clearTrails();
+        this.system.update(0, 0);
+        const p = this.system.comet.position;
+        const target = new THREE.Vector3(p.x, p.z, -p.y);
+        this.rig.setImmediate(target.clone().add(new THREE.Vector3(80, 65, 160)), target.clone().add(new THREE.Vector3(25, 0, -10)));
+        this.playing = false; this.els.play.textContent = '▶'; this.syncScrub();
+      },
+      tourMode: on => {
+        if (on) {
+          this.tourPlayback = { playing: this.playing, speed: this.speedIndex };
+          this.playing = true; this.speedIndex = 1;
+          this.els.panel.classList.remove('show');
+          document.getElementById('app')!.classList.add('touring');
+        } else {
+          if (this.tourPlayback) {
+            this.playing = this.tourPlayback.playing; this.speedIndex = this.tourPlayback.speed;
+          }
+          this.tourPlayback = null;
+          document.getElementById('app')!.classList.remove('touring');
+          this.rig.controls.autoRotate = false;
+        }
+        this.els.speed.value = String(this.speedIndex);
+        this.els.play.textContent = this.playing ? '❚❚' : '▶';
+        this.updateSpeedLabel();
+      },
+    });
+    this.rig.controls.addEventListener('start', () => this.experience.stopTour());
+    this.system.renderer.domElement.addEventListener('wheel', () => {
+      if (this.introIndex >= 0) this.skipIntro();
+    }, { passive: true });
 
     // 开场：相机从地球夜面缓缓升起
     this.rig.controls.enabled = false;
     this.introIndex = 0;
     this.introT = 0;
     this.applyIntroCamera(0);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) this.skipIntro();
 
     window.addEventListener('resize', () => this.onResize());
     this.system.renderer.domElement.addEventListener('pointerdown', (e) => this.onPointerDown(e));
@@ -199,6 +260,7 @@ export class App {
     });
     this.els.now.addEventListener('click', () => {
       this.jd = jdFromDate(new Date());
+      this.system.clearTrails();
       this.syncScrub();
     });
     this.els.scrub.addEventListener('pointerdown', () => (this.scrubbing = true));
@@ -206,16 +268,20 @@ export class App {
     this.els.scrub.addEventListener('input', () => {
       const years = Number(this.els.scrub.value);
       this.jd = J2000 + years * 365.25;
+      this.system.clearTrails();
     });
 
     this.els.size.addEventListener('input', () => {
       const v = Number(this.els.size.value) / 100;
-      // 0 = 真实比例，1 = 视觉夸张；用幂曲线让中段更好调
-      const scale = Math.pow(v, 3.2) * 0.998 + 0.002;
-      this.system.sizeScale = scale;
+      this.system.sizeScale = v;
       this.updateSizeTags(v);
     });
 
+    document.querySelectorAll<HTMLElement>('[data-view]').forEach(button => {
+      button.onclick = () => {
+        if (this.selected) this.rig.focus(this.selected, { view: button.dataset.view as ViewPreset, follow: this.following });
+      };
+    });
     this.els.follow.addEventListener('click', () => this.toggleFollow());
     this.els.close.addEventListener('click', () => this.closePanel());
 
@@ -223,7 +289,7 @@ export class App {
       const btn = e.currentTarget as HTMLElement;
       const on = !btn.classList.contains('on');
       btn.classList.toggle('on', on);
-      for (const o of this.system.orbitLines) o.line.visible = on;
+      this.system.setOrbitsVisible(on);
     });
     document.getElementById('toggle-labels')!.addEventListener('click', (e) => {
       const btn = e.currentTarget as HTMLElement;
@@ -232,11 +298,15 @@ export class App {
     });
     document.getElementById('toggle-trails')!.addEventListener('click', (e) => {
       const btn = e.currentTarget as HTMLElement;
-      const on = !btn.classList.toggle('on');
+      const on = btn.classList.toggle('on');
       for (const t of this.system.trails.values()) t.line.visible = on;
     });
 
     window.addEventListener('keydown', (e) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(tag)) return;
+      if (e.key === 'Escape') { this.experience.escape(); this.skipIntroIfNeeded(); }
+      if (e.key.toLowerCase() === 'c') this.experience.setCinema(!this.isCinema);
       if (e.code === 'Space') {
         e.preventDefault();
         this.togglePlay();
@@ -264,7 +334,7 @@ export class App {
 
   private syncScrub() {
     const years = (this.jd - J2000) / 365.25;
-    this.els.scrub.value = String(Math.max(-100, Math.min(100, years)));
+    this.els.scrub.value = String(Math.max(-200, Math.min(50, years)));
   }
 
   /* ---------------------------------------------------------------- */
@@ -308,6 +378,7 @@ export class App {
   }
 
   private select(id: string, focus: boolean) {
+    this.finishIntro();
     const body = BODY_BY_ID.get(id);
     if (!body) return;
     this.selected = id;
@@ -315,9 +386,16 @@ export class App {
     this.els.title.textContent = body.name;
     this.els.latin.textContent = body.latin.toUpperCase();
     this.els.poetry.textContent = body.poetry;
+    const related = document.getElementById('p-related')!;
+    related.replaceChildren();
+    const siblings = BODIES.filter(b => b.parent === id || b.id === body.parent);
+    for (const b of siblings) {
+      const btn = document.createElement('button'); btn.textContent = b.name;
+      btn.onclick = () => this.select(b.id, true); related.append(btn);
+    }
 
     const rows: Array<[string, string]> = [
-      ['距太阳', body.info.distance],
+      [body.parent ? '距母星' : '距太阳', body.info.distance],
       ['半径', body.info.radius],
       ['质量', body.info.mass],
       ['公转', body.info.period],
@@ -340,9 +418,10 @@ export class App {
     for (const [lid, el] of this.labels) el.classList.toggle('sel', lid === id);
 
     if (focus) {
-      this.following = false;
-      this.els.follow.classList.remove('on');
-      this.els.follow.textContent = '跟随它';
+      this.experience.stopTour();
+      this.following = true;
+      this.els.follow.classList.add('on');
+      this.els.follow.textContent = '正在跟随';
       this.rig.focus(id);
     }
   }
@@ -352,6 +431,9 @@ export class App {
     this.selected = null;
     this.following = false;
     this.els.follow.classList.remove('on');
+    this.rig.release();
+    for (const el of this.labels.values()) el.classList.remove('sel');
+    for (const btn of this.els.quickbar.querySelectorAll('button')) btn.classList.remove('on');
     setTimeout(() => {
       if (!this.selected) this.els.panel.hidden = true;
     }, 400);
@@ -397,12 +479,19 @@ export class App {
 
   /* ---------------------------------------------------------------- */
 
-  private skipIntro() {
+  private finishIntro() {
+    if (this.introIndex < 0) return;
     this.introIndex = -1;
     this.els.intro.classList.add('hide');
     this.rig.controls.enabled = true;
-    this.rig.frameAll(false);
     this.revealUI();
+  }
+
+  private skipIntroIfNeeded() { if (this.introIndex >= 0) this.skipIntro(); }
+
+  private skipIntro() {
+    this.finishIntro();
+    this.rig.frameAll(false);
   }
 
   private revealUI() {
@@ -461,10 +550,14 @@ export class App {
     requestAnimationFrame(() => this.loop());
     const dt = Math.min(0.05, this.clock.getDelta());
     const elapsed = this.clock.elapsedTime;
+    this.experience.update(dt, this.jd, this.selected,
+      this.selected ? this.system.worldPositionOf(this.selected).length() / AU_SCALE : this.system.camera.position.length() / AU_SCALE,
+      this.selected ? this.system.bodyRadiusWorld(this.selected) : 0);
 
-    if (this.playing && this.introIndex < 0) {
+    if (this.playing && !this.scrubbing && this.introIndex < 0) {
       const preset = SPEED_PRESETS[this.speedIndex];
-      this.jd += dt * preset.daysPerSecond;
+      this.jd += dt * preset.daysPerSecond * this.direction;
+      this.jd = Math.max(jdFromDate(new Date('1800-01-01T00:00:00Z')), Math.min(jdFromDate(new Date('2050-12-31T23:59:59Z')), this.jd));
       if (!this.scrubbing) this.syncScrub();
     } else if (this.introIndex >= 0) {
       this.jd += dt * 1;
@@ -500,6 +593,8 @@ export class App {
     for (const body of ordered) {
       const el = this.labels.get(body.id)!;
       const world = this.system.worldPositionOf(body.id);
+      const distance = cam.position.distanceTo(world);
+      const pixels = this.system.bodyRadiusWorld(body.id) / Math.max(distance, 0.001) * rect.height;
       v.copy(world).project(cam);
 
       if (v.z > 1 || v.z < -1) {
@@ -514,6 +609,7 @@ export class App {
 
       if (x < -60 || x > rect.width + 60 || y < -30 || y > rect.height + 30) {
         el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
         continue;
       }
 
@@ -539,10 +635,40 @@ export class App {
 
       placed.push({ x, y, w, h });
       el.style.left = `${x}px`;
-      el.style.top = `${y}px`;
+      el.style.top = `${y + Math.min(120, pixels * 0.8) + 15}px`;
       el.style.opacity = body.type === 'moon' ? '0.7' : '1';
       el.style.pointerEvents = 'auto';
     }
+  }
+
+  private async capture(message: string) {
+    const source = this.system.renderer.domElement;
+    // Render immediately so export does not depend on preserveDrawingBuffer.
+    this.system.render(this.clock.elapsedTime);
+    const canvas = document.createElement('canvas');
+    canvas.width = source.width; canvas.height = source.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(source, 0, 0);
+    const w = canvas.width, h = canvas.height;
+    const gradient = ctx.createLinearGradient(0, h * 0.6, 0, h);
+    gradient.addColorStop(0, 'transparent'); gradient.addColorStop(1, 'rgba(0,3,8,.9)');
+    ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h);
+    const font = Math.max(18, Math.min(w * 0.034, 32));
+    ctx.fillStyle = '#ffd9a0'; ctx.font = `${font}px serif`; ctx.textAlign = 'center';
+    // Wrap by measured width, including Chinese, without inserting HTML.
+    const lines: string[] = []; let line = '';
+    for (const c of (message || '在这个宇宙里，很高兴遇见你。').slice(0, 100)) {
+      if (c === '\n' || ctx.measureText(line + c).width > w * 0.8) { lines.push(line); line = c === '\n' ? '' : c; }
+      else line += c;
+    }
+    if (line) lines.push(line);
+    lines.forEach((text, i) => ctx.fillText(text, w / 2, h - 90 - (lines.length - 1 - i) * font * 1.5));
+    ctx.font = `${Math.max(11, font * 0.42)}px sans-serif`; ctx.fillStyle = '#abb7c8';
+    ctx.fillText(`SOL · ${formatDate(this.jd)} UTC`, w / 2, h - 35);
+    const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error('PNG export failed')), 'image/png'));
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a'); link.href = url; link.download = 'SOL-星空明信片.png'; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
 
   /* 供外部调用 */

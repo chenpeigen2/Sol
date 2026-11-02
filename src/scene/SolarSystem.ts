@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { Comet } from '../render/Comet';
 import {
   DEG,
   elementsAt,
@@ -9,7 +14,7 @@ import {
   solveKepler,
   type OrbitBasis,
 } from '../core/kepler';
-import { BODIES, type Body } from '../data/bodies';
+import { BODIES, realRadius, type Body } from '../data/bodies';
 import { ATMOSPHERES, LOOKS } from '../data/looks';
 import { createBodyTextures, createGlowTexture, createHazeTexture, createRingTexture } from '../render/textures';
 import { createCloudMaterial, createHaloMaterial, createPlanetMaterial } from '../render/materials';
@@ -119,7 +124,8 @@ void main(){
   vec3 toC = uPlanetCenter - vWorldPos;
   float along = dot(toC, L);
   float perp = length(toC - L * along);
-  float shade = (along > 0.0 && perp < uPlanetRadius) ? 0.16 : 1.0;
+  float shadow = smoothstep(uPlanetRadius * 0.97, uPlanetRadius * 1.05, perp);
+  float shade = along > 0.0 ? mix(0.16, 1.0, shadow) : 1.0;
 
   vec3 col = t.rgb * uBrightness * (0.10 + 0.90 * shade);
   gl_FragColor = vec4(col, t.a * mix(0.55, 1.0, shade));
@@ -150,6 +156,9 @@ export class SolarSystem {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
   readonly ecliptic = new THREE.Group();
+  readonly comet = new Comet();
+  private composer: EffectComposer;
+  private bloom: UnrealBloomPass;
 
   readonly nodes = new Map<string, BodyNode>();
   readonly orbitLines: OrbitLine[] = [];
@@ -162,8 +171,11 @@ export class SolarSystem {
   private ringTexture: THREE.Texture;
   private starSpriteMat: THREE.SpriteMaterial;
   private glowTexture: THREE.Texture;
+  private moonOrbits = new Map<string, THREE.LineLoop>();
+  private lastTrailDay: number | null = null;
+  private lastOrbitCentury = Infinity;
 
-  /** 天体尺寸夸大倍率：1 = 视觉夸张，接近 0 = 真实比例 */
+  /** 0 = 每个天体与卫星距离的真实尺度；1 = 视觉夸张 */
   sizeScale = 1;
 
   constructor(opts: SolarSystemOptions) {
@@ -206,7 +218,15 @@ export class SolarSystem {
     this.buildBodies();
     this.buildBelts();
     this.buildHaze();
+    this.ecliptic.add(this.comet.group);
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(opts.container.clientWidth, opts.container.clientHeight), 0.4, 0.5, 0.85);
+    this.composer.addPass(this.bloom);
+    this.composer.addPass(new OutputPass());
   }
+
+  setBloom(enabled: boolean) { this.bloom.enabled = enabled; }
 
   /** 小行星带 / 柯伊伯带的弥散尘埃盘 */
   private buildHaze() {
@@ -395,7 +415,7 @@ export class SolarSystem {
       const parent = this.nodes.get(body.parent!)!;
       const node = this.nodes.get(body.id)!;
       parent.holder.add(node.holder);
-      this.buildMoonOrbit(body, node);
+      this.buildMoonOrbit(body);
     }
   }
 
@@ -422,30 +442,35 @@ export class SolarSystem {
     this.orbitLines.push({ body, line, material });
   }
 
-  private buildMoonOrbit(body: Body, node: BodyNode) {
+  private buildMoonOrbit(body: Body) {
     const m = body.moon!;
-    const basis = moonBasis(m.nodeDeg, m.i);
-    const positions: number[] = [];
-    for (let i = 0; i <= 128; i++) {
-      const E = (i / 128) * Math.PI * 2;
-      const xp = Math.cos(E) - m.e;
-      const yp = Math.sqrt(Math.max(0, 1 - m.e * m.e)) * Math.sin(E);
-      const x = basis.ex.x * xp + basis.ey.x * yp;
-      const y = basis.ex.y * xp + basis.ey.y * yp;
-      const z = basis.ex.z * xp + basis.ey.z * yp;
-      positions.push(x * m.displayOrbit, y * m.displayOrbit, z * m.displayOrbit);
+    // Unit ellipse about the parent, not about the moving moon.
+    const pts = new Float32Array(128 * 3);
+    for (let j = 0; j < 128; j++) {
+      const E = j / 128 * Math.PI * 2;
+      pts[j * 3] = Math.cos(E) - m.e;
+      pts[j * 3 + 1] = Math.sqrt(1 - m.e * m.e) * Math.sin(E);
     }
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    const material = new THREE.LineBasicMaterial({
-      color: body.color,
-      transparent: true,
-      opacity: 0.22,
-      depthWrite: false,
-    });
-    const line = new THREE.Line(geo, material);
-    line.frustumCulled = false;
-    node.holder.add(line);
+    geo.setAttribute('position', new THREE.BufferAttribute(pts, 3));
+    const material = new THREE.LineBasicMaterial({ color: body.color, transparent: true, opacity: 0.22, depthWrite: false });
+    const loop = new THREE.LineLoop(geo, material);
+    loop.frustumCulled = false;
+    this.nodes.get(body.parent!)!.holder.add(loop);
+    this.moonOrbits.set(body.id, loop);
+  }
+
+  setOrbitsVisible(visible: boolean) {
+    for (const o of this.orbitLines) o.line.visible = visible;
+    for (const o of this.moonOrbits.values()) o.visible = visible;
+  }
+
+  clearTrails() {
+    for (const t of this.trails.values()) {
+      t.pts.length = t.cols.length = 0;
+      t.geometry.setDrawRange(0, 0);
+    }
+    this.lastTrailDay = null;
   }
 
   private buildTrail(body: Body) {
@@ -513,7 +538,7 @@ export class SolarSystem {
         const el = elementsAt(body.elements, body.rates, centuries);
         const basis = orbitBasis(el);
         node.basis = basis;
-        const pos = positionFromBasis(basis, el.a, el.e, el.L);
+        const pos = positionFromBasis(basis, el.a, el.e, el.L - el.peri);
         node.ecliptic.set(pos.x * AU_SCALE, pos.y * AU_SCALE, pos.z * AU_SCALE);
         node.holder.position.copy(node.ecliptic);
       } else if (body.moon) {
@@ -524,7 +549,13 @@ export class SolarSystem {
         const E = solveKepler(meanAnom * DEG, m.e);
         const xp = Math.cos(E) - m.e;
         const yp = Math.sqrt(Math.max(0, 1 - m.e * m.e)) * Math.sin(E);
-        const radius = m.displayOrbit * this.sizeScale;
+        const blend = Math.pow(this.sizeScale, 3.2);
+        const radius = THREE.MathUtils.lerp(m.aAU * AU_SCALE, m.displayOrbit, blend);
+        const line = this.moonOrbits.get(body.id)!;
+        line.scale.setScalar(radius);
+        const ex = new THREE.Vector3(basis.ex.x, basis.ex.y, basis.ex.z);
+        const ey = new THREE.Vector3(basis.ey.x, basis.ey.y, basis.ey.z);
+        line.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(ex, ey, ex.clone().cross(ey)));
         node.local.set(
           (basis.ex.x * xp + basis.ey.x * yp) * radius,
           (basis.ex.y * xp + basis.ey.y * yp) * radius,
@@ -534,17 +565,20 @@ export class SolarSystem {
       }
 
       // 尺寸
-      const scale = this.sizeScale;
-      const radius = body.displayRadius * scale;
+      const radius = THREE.MathUtils.lerp(realRadius(body), body.displayRadius, Math.pow(this.sizeScale, 3.2));
       node.displayRadius = radius;
 
       if (node.mesh) {
         node.mesh.scale.setScalar(radius);
-        node.pivot.rotation.x = body.tilt * DEG;
+        // SphereGeometry's pole is +Y; the ecliptic pole is +Z.
+        node.pivot.rotation.x = (90 + body.tilt) * DEG;
         const spin = (daysSinceJ2000 * 24) / body.rotationHours;
         node.mesh.rotation.y = spin * Math.PI * 2;
       }
-      if (node.cloudMesh) node.cloudMesh.scale.setScalar(radius);
+      if (node.cloudMesh) {
+        node.cloudMesh.scale.setScalar(radius);
+        node.cloudMesh.rotation.y = (daysSinceJ2000 * 24 / body.rotationHours) * Math.PI * 2 * 1.015;
+      }
       if (node.halo) node.halo.scale.setScalar(radius);
       if (node.ring) node.ring.scale.setScalar(radius);
       if (node.glow) {
@@ -591,11 +625,25 @@ export class SolarSystem {
       }
     }
 
-    // 拖尾
-    this.updateTrails();
+    // Do not accumulate identical samples while paused, or draw a chord across a date jump.
+    if (this.lastTrailDay === null || Math.abs(daysSinceJ2000 - this.lastTrailDay) > 1e-9) {
+      if (this.lastTrailDay !== null && Math.abs(daysSinceJ2000 - this.lastTrailDay) > 400) this.clearTrails();
+      this.updateTrails();
+      this.lastTrailDay = daysSinceJ2000;
+    }
+    if (Math.abs(centuries - this.lastOrbitCentury) > 0.0001) {
+      for (const o of this.orbitLines) {
+        const pts = sampleOrbit(elementsAt(o.body.elements!, o.body.rates, centuries), 512);
+        for (let j = 0; j < pts.length; j++) pts[j] *= AU_SCALE;
+        (o.line.geometry.attributes.position as THREE.BufferAttribute).array.set(pts);
+        o.line.geometry.attributes.position.needsUpdate = true;
+      }
+      this.lastOrbitCentury = centuries;
+    }
 
     this.belt.material.uniforms.uDays.value = daysSinceJ2000;
     this.kuiper.material.uniforms.uDays.value = daysSinceJ2000;
+    this.comet.update(daysSinceJ2000);
   }
 
   private updateTrails() {
@@ -640,7 +688,7 @@ export class SolarSystem {
   pick(raycaster: THREE.Raycaster): string | null {
     const meshes: THREE.Object3D[] = [];
     for (const node of this.nodes.values()) {
-      if (node.mesh && node.body.type !== 'moon') meshes.push(node.mesh);
+      if (node.mesh) meshes.push(node.mesh);
     }
     const hits = raycaster.intersectObjects(meshes, false);
     if (hits.length === 0) return null;
@@ -653,6 +701,7 @@ export class SolarSystem {
 
   setSize(w: number, h: number) {
     this.renderer.setSize(w, h);
+    this.composer.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
   }
@@ -664,7 +713,7 @@ export class SolarSystem {
         node.material.uniforms.uTime.value = elapsed;
       }
     }
-    this.renderer.render(this.scene, this.camera);
+    this.composer.render();
   }
 }
 
@@ -719,8 +768,8 @@ function moonBasis(nodeDeg: number, incDeg: number): OrbitBasis {
   const ci = Math.cos(i);
   const si = Math.sin(i);
   return {
-    ex: { x: cN, y: sN * ci, z: 0 },
-    ey: { x: -sN, y: cN * ci, z: si },
+    ex: { x: cN, y: sN, z: 0 },
+    ey: { x: -sN * ci, y: cN * ci, z: si },
   };
 }
 

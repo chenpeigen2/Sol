@@ -2,126 +2,108 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { SolarSystem } from './SolarSystem';
 
-const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-
-interface Tween {
+export type ViewPreset = 'oblique' | 'top' | 'edge' | 'system';
+const DIRECTIONS = {
+  oblique: new THREE.Vector3(0.65, 0.48, 1).normalize(),
+  top: new THREE.Vector3(0.001, 1, 0.001).normalize(),
+  edge: new THREE.Vector3(0.4, 0.025, 1).normalize(),
+};
+interface Flight {
   fromPos: THREE.Vector3;
-  toPos: THREE.Vector3;
   fromTarget: THREE.Vector3;
-  toTarget: THREE.Vector3;
-  t: number;
-  dur: number;
+  offset: THREE.Vector3;
+  anchor: string | null;
+  target: THREE.Vector3;
+  elapsed: number;
+  duration: number;
 }
 
 export class CameraRig {
   readonly controls: OrbitControls;
-  private tween: Tween | null = null;
+  private flight: Flight | null = null;
   private followId: string | null = null;
   private lastFollowPos = new THREE.Vector3();
-  private system: SolarSystem;
 
-  constructor(camera: THREE.PerspectiveCamera, dom: HTMLElement, system: SolarSystem) {
-    this.system = system;
+  constructor(camera: THREE.PerspectiveCamera, dom: HTMLElement, private system: SolarSystem) {
     this.controls = new OrbitControls(camera, dom);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.055;
     this.controls.rotateSpeed = 0.55;
-    this.controls.zoomSpeed = 1.1;
-    this.controls.panSpeed = 0.8;
-    this.controls.minDistance = 0.02;
+    this.controls.minDistance = 0.003;
     this.controls.maxDistance = 400000;
-    this.controls.screenSpacePanning = false;
+    this.controls.screenSpacePanning = true;
+    this.controls.addEventListener('start', () => { this.flight = null; });
   }
 
-  get isAnimating() {
-    return this.tween !== null;
-  }
+  get isAnimating() { return this.flight !== null; }
 
-  /** 停止一切自动行为，交还控制权给用户 */
   release() {
-    this.tween = null;
+    this.flight = null;
     this.followId = null;
+    this.controls.autoRotate = false;
   }
 
-  focus(bodyId: string, opts: { immediate?: boolean; padding?: number } = {}) {
-    const target = this.system.worldPositionOf(bodyId);
-    const radius = Math.max(this.system.bodyRadiusWorld(bodyId), 0.05);
-    const dist = radius * (opts.padding ?? 7);
-
-    const dir = new THREE.Vector3()
-      .subVectors(this.controls.object.position, this.controls.target)
-      .normalize();
-    if (!isFinite(dir.length()) || dir.lengthSq() === 0) dir.set(0.3, 0.25, 1).normalize();
-
-    const toPos = target.clone().add(dir.multiplyScalar(dist));
-
-    this.followId = bodyId;
-    this.lastFollowPos.copy(target);
-
-    if (opts.immediate) {
-      this.controls.target.copy(target);
-      this.controls.object.position.copy(toPos);
-      this.tween = null;
-      return;
+  focus(id: string, opts: { immediate?: boolean; padding?: number; follow?: boolean; view?: ViewPreset } = {}) {
+    const radius = Math.max(this.system.bodyRadiusWorld(id), 0.001);
+    const view = opts.view ?? 'oblique';
+    let dist = radius * (opts.padding ?? (id === 'saturn' ? 10 : 6));
+    if (view === 'system') {
+      const moons = [...this.system.nodes.values()].filter(n => n.body.parent === id);
+      const span = Math.max(radius * 3, ...moons.map(n => n.holder.position.length()));
+      dist = span * 3;
     }
-
-    this.tween = {
-      fromPos: this.controls.object.position.clone(),
-      toPos,
-      fromTarget: this.controls.target.clone(),
-      toTarget: target,
-      t: 0,
-      dur: 1.5,
-    };
+    // Match portrait framing instead of clipping a planet on narrow phones.
+    dist *= Math.max(1, 0.9 / this.system.camera.aspect);
+    const dir = DIRECTIONS[view === 'system' ? 'oblique' : view];
+    this.move(id, new THREE.Vector3(), dir.clone().multiplyScalar(dist), 2.4, opts.immediate ?? false);
+    this.followId = opts.follow === false ? null : id;
   }
 
-  /** 拉远到能看见整个海王星轨道 */
+  overview(kind: 'inner' | 'all' | 'top' = 'inner') {
+    const distance = (kind === 'all' ? 10000 : 600) * Math.max(1, 0.9 / this.system.camera.aspect);
+    this.release();
+    this.move(null, new THREE.Vector3(), (kind === 'top' ? DIRECTIONS.top : DIRECTIONS.oblique).clone().multiplyScalar(distance), 3);
+  }
+
   frameAll(immediate = false) {
-    const target = new THREE.Vector3(0, 0, 0);
-    const dist = 1250;
-    const dir = new THREE.Vector3(0.42, 0.40, 1).normalize();
-    const toPos = target.clone().add(dir.multiplyScalar(dist));
-    this.followId = null;
+    this.release();
+    this.move(null, new THREE.Vector3(), DIRECTIONS.oblique.clone().multiplyScalar(600), 2.5, immediate);
+  }
 
-    if (immediate) {
-      this.controls.target.copy(target);
-      this.controls.object.position.copy(toPos);
-      this.tween = null;
-      return;
-    }
-    this.tween = {
+  private move(anchor: string | null, target: THREE.Vector3, offset: THREE.Vector3, duration: number, immediate = false) {
+    const center = anchor ? this.system.worldPositionOf(anchor) : target;
+    this.lastFollowPos.copy(center);
+    if (immediate) { this.setImmediate(center.clone().add(offset), center); return; }
+    this.flight = {
       fromPos: this.controls.object.position.clone(),
-      toPos,
-      fromTarget: this.controls.target.clone(),
-      toTarget: target,
-      t: 0,
-      dur: 2.2,
+      fromTarget: this.controls.target.clone(), offset, anchor, target, elapsed: 0, duration,
     };
   }
 
-  /** 直接把相机放到指定位置（无过渡） */
   setImmediate(pos: THREE.Vector3, target: THREE.Vector3) {
     this.controls.object.position.copy(pos);
     this.controls.target.copy(target);
-    this.tween = null;
+    this.controls.object.lookAt(target);
+    this.flight = null;
   }
 
   update(dt: number) {
-    if (this.tween) {
-      this.tween.t += dt;
-      const k = Math.min(1, this.tween.t / this.tween.dur);
-      const e = easeInOut(k);
-      this.controls.object.position.lerpVectors(this.tween.fromPos, this.tween.toPos, e);
-      this.controls.target.lerpVectors(this.tween.fromTarget, this.tween.toTarget, e);
-      if (k >= 1) this.tween = null;
+    if (this.flight) {
+      const f = this.flight;
+      const center = f.anchor ? this.system.worldPositionOf(f.anchor) : f.target;
+      f.elapsed += dt;
+      const k = Math.min(1, f.elapsed / f.duration);
+      const e = k * k * (3 - 2 * k);
+      this.controls.object.position.lerpVectors(f.fromPos, center.clone().add(f.offset), e);
+      this.controls.target.lerpVectors(f.fromTarget, center, e);
+      this.lastFollowPos.copy(center);
+      if (k === 1) this.flight = null;
     } else if (this.followId) {
-      const pos = this.system.worldPositionOf(this.followId);
-      const delta = pos.clone().sub(this.lastFollowPos);
-      this.controls.object.position.add(delta);
-      this.controls.target.copy(pos);
-      this.lastFollowPos.copy(pos);
+      const p = this.system.worldPositionOf(this.followId);
+      this.controls.object.position.add(p.clone().sub(this.lastFollowPos));
+      this.controls.target.copy(p);
+      this.lastFollowPos.copy(p);
     }
-
-    this.controls.update();
+    this.controls.update(dt);
   }
 }

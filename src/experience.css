@@ -1,0 +1,73 @@
+[hidden] { display: none !important; }
+button, input, textarea { font-family: inherit; }
+.effect-controls { display: flex; gap: 14px; font-size: 10px; color: var(--text-dim); margin: 12px 0; }
+#experience .effect-controls input { width: auto; accent-color: #ffd9a0; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 1px solid var(--gold); outline-offset: 4px; }
+#experience { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+#experience button, #experience input, #experience textarea, #explorer, #letter { pointer-events: auto; }
+#experience button, .view-presets button, .related button { color: var(--text-dim); background: rgba(255,255,255,.035); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; padding: 9px 12px; font-size: 11px; transition: .2s; }
+#experience button:hover, #experience button.active, .view-presets button:hover, .related button:hover { color: var(--gold); background: rgba(255,217,160,.12); border-color: var(--gold-dim); }
+.missionbar { position: absolute; top: 124px; left: 28px; display: flex; gap: 5px; padding: 6px; }
+#experience .missionbar button { border: none; background: none; letter-spacing: .06em; }
+#explorer, #letter { position: absolute; left: 28px; top: 190px; width: 355px; padding: 22px; background: rgba(8,14,24,.93); max-height: calc(100dvh - 285px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #546070 transparent; }
+#experience header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+#experience header small { letter-spacing: .22em; font-size: 9px; color: var(--gold-dim); }
+#experience h2 { font: 22px var(--serif); font-weight: 400; margin-top: 8px; letter-spacing: .1em; }
+#experience input:not([type=range]), #experience textarea { background: rgba(0,0,0,.25); color: var(--text); border: 1px solid var(--line); padding: 12px; border-radius: 8px; width: 100%; font-size: 12px; color-scheme: dark; }
+.view-presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0; }
+.view-presets button { flex: 1; white-space: nowrap; padding: 8px; }
+#body-results { display: grid; gap: 6px; margin-top: 15px; }
+#experience .body-result { display: grid; grid-template-columns: 12px 1fr; gap: 5px 10px; padding: 10px 14px; text-align: left; }
+.body-result i { grid-row: span 2; width: 7px; height: 7px; align-self: center; border-radius: 50%; box-shadow: 0 0 14px currentColor; }
+.body-result strong { color: #e0e6ef; font: 14px var(--serif); letter-spacing: .12em; }
+.body-result small { font-size: 10px; opacity: .6; }
+.date-controls { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 15px; display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+.date-controls label, .date-controls input, .date-controls p { grid-column: span 2; }
+.date-controls label, #letter label { font-size: 11px; color: var(--text-dim); }
+.date-controls p { font-size: 10px; line-height: 1.7; color: var(--text-dim); }
+#letter textarea { margin-top: 12px; line-height: 1.9; resize: vertical; min-height: 100px; }
+.letter-actions { display: flex; gap: 8px; margin-top: 14px; }
+#tour-caption { position: absolute; bottom: 115px; left: 50%; transform: translateX(-50%); text-align: center; width: min(540px, 88vw); text-shadow: 0 2px 12px #000; padding: 18px; background: linear-gradient(transparent,rgba(0,0,0,.5)); }
+#tour-caption small { color: var(--gold); font-size: 10px; letter-spacing: .3em; }
+#tour-caption p { font: 19px/1.8 var(--serif); margin: 10px 0 18px; color: #eee9df; }
+.tour-progress { width: 160px; height: 1px; background: #ffffff25; margin: auto; }
+.tour-progress i { display: block; height: 100%; width: 0; background: var(--gold); }
+.tour-actions { display: flex; justify-content: center; gap: 6px; margin-top: 15px; }
+#experience .tour-actions button { font-size: 10px; background: rgba(0,0,0,.4); }
+#telemetry { position: absolute; left: 28px; bottom: 180px; padding: 14px 16px; width: 236px; border-left: 1px solid #7fd4e855; }
+#telemetry span { font-size: 8px; letter-spacing: .2em; color: var(--cyan); opacity: .6; }
+#telemetry strong { display: block; font-size: 10px; font-weight: 400; letter-spacing: .08em; margin-top: 9px; }
+#telemetry p { white-space: pre-line; font: 10px/1.9 monospace; color: var(--text-dim); margin-top: 8px; }
+#dedication-display { position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%); text-align: center; font: clamp(18px,2.5vw,30px)/1.9 var(--serif); letter-spacing: .13em; color: var(--gold); width: min(800px, 85vw); text-shadow: 0 0 30px #b37829, 0 2px 10px #000; white-space: pre-wrap; overflow-wrap: anywhere; }
+#experience #exit-cinema { position: absolute; right: 24px; top: 24px; background: #0005; opacity: .45; }
+#experience #exit-cinema:hover { opacity: 1; }
+#toast { position: absolute; top: 185px; left: 50%; transform: translateX(-50%); background: #0b1424eb; border: 1px solid #ffd9a044; color: var(--gold); border-radius: 12px; padding: 14px 22px; font-size: 12px; max-width: 90vw; box-shadow: 0 10px 40px #0009; }
+.cinema #brand, .cinema #timebar, .cinema #hud, .cinema #quickbar, .cinema #panel, .cinema #labels, .cinema .missionbar, .cinema #telemetry, .cinema #explorer, .cinema #letter { opacity: 0 !important; pointer-events: none !important; visibility: hidden; }
+.touring #panel { visibility: hidden; }
+#experience { opacity: 0; transition: opacity 1s; }
+#app:has(#brand.ready) #experience { opacity: 1; }
+.related { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+.related button { font-size: 10px; padding: 5px 8px; }
+#panel details summary { font-size: 10px; letter-spacing: .1em; color: var(--text-dim); cursor: pointer; margin: 15px 0 10px; }
+#panel { max-height: calc(100dvh - 220px); overflow: auto; scrollbar-width: thin; }
+#quickbar { max-width: calc(100vw - 640px); }
+@media (max-width: 1200px) {
+  #quickbar { max-width: 92vw; bottom: 16px; }
+  #hud, #panel { bottom: 76px; }
+  #telemetry { display: none; }
+}
+@media (max-width: 760px) {
+  #brand { display: none; }
+  .missionbar { top: 152px; left: 14px; right: 14px; justify-content: space-around; padding: 4px; }
+  #experience .missionbar button { font-size: 13px; padding: 9px 5px; }
+  #experience .missionbar span { font-size: 10px; }
+  #explorer, #letter { left: 14px; right: 14px; top: 210px; width: auto; max-height: calc(100dvh - 290px); padding: 16px; }
+  #panel { max-height: calc(100dvh - 300px); z-index: 2; }
+  #panel.show ~ #quickbar { z-index: 3; }
+  #tour-caption { bottom: 210px; }
+  #tour-caption p { font-size: 15px; }
+  #toast { top: 210px; }
+  #experience #exit-cinema { top: 14px; right: 14px; }
+  .cinema #tour-caption { bottom: 40px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; } }

@@ -47,7 +47,8 @@ void main(){
   float E = kepler(M, e);
   float xp = a * (cos(E) - e);
   float yp = a * sqrt(max(0.0, 1.0 - e * e)) * sin(E);
-  vec3 center = aEx * xp + aEy * yp;
+  // Orbital elements are AU; meshes and planets use 100 world units per AU.
+  vec3 center = (aEx * xp + aEy * yp) * 100.0;
 
   float cx = cos(aRot.x), sx = sin(aRot.x);
   float cy = cos(aRot.y), sy = sin(aRot.y);

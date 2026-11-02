@@ -1,6 +1,6 @@
 import type { Elements, ElementRates } from '../core/kepler';
 
-/** 1 世界单位 = 1 AU */
+/** 1 AU = 100 世界单位 */
 export const AU = 100;
 /** 1 AU = 1.495978707 亿公里 */
 export const KM_PER_AU = 149597870.7;
@@ -104,7 +104,7 @@ const PLANETS: Body[] = [
       discovery: '自古已知',
       composition: '氢 73.5% / 氦 24.9% / 氧 0.8% / 碳 0.3%',
     },
-    poetry: '我们唯一认识的火，也是唯一一盏从不回声的路灯。',
+    poetry: '阳光走了八分钟来到这里，而你让我的世界在一瞬间明亮。',
   },
   {
     id: 'mercury',
@@ -130,7 +130,7 @@ const PLANETS: Body[] = [
       discovery: '史前即知（中国称辰星）',
       composition: '铁核 85% / 硅酸盐岩石与硅酸盐壳',
     },
-    poetry: '离火最近的守夜人，一辈子没有等到过天亮。',
+    poetry: '离太阳最近，也有漫长的夜。愿你总有一处可以安心停靠。',
   },
   {
     id: 'venus',
@@ -156,7 +156,7 @@ const PLANETS: Body[] = [
       discovery: '史前即知（太白 / 启明）',
       composition: '96.5% 二氧化碳大气 / 硫酸云层 / 玄武岩壳',
     },
-    poetry: '一颗被自己的天空闷死的星星，漂亮得让人忘了它是尸体。',
+    poetry: '在日出之前、日落之后，它总是天空里先亮起来的那一个。',
   },
   {
     id: 'earth',
@@ -208,7 +208,7 @@ const PLANETS: Body[] = [
       discovery: '史前即知（荧惑）',
       composition: '氧化铁尘土（锈红）/ 稀薄二氧化碳大气 / 冰盖',
     },
-    poetry: '宇宙中最安静的一场谋杀，凶手是时间，案发现场还留着水。',
+    poetry: '它把曾经的河流藏进红色尘土，像把思念写在无人读过的信里。',
   },
   {
     id: 'jupiter',
@@ -261,7 +261,7 @@ const PLANETS: Body[] = [
       discovery: '史前即知 / 惠更斯 1655 年发现光环',
       composition: '96% 氢 / 3% 氦 / 氨冰云带 / 环由水冰碎块构成',
     },
-    poetry: '戴着它唯一的证物，环游一条无人认领的走廊。',
+    poetry: '无数冰粒围成一枚戒指，替时间保存着不必说出口的浪漫。',
   },
   {
     id: 'uranus',
@@ -286,7 +286,7 @@ const PLANETS: Body[] = [
       temperature: '−195°C',
       moons: '28',
       discovery: '1781 年，威廉·赫歇尔',
-      composition: '83% 氢 / 15% 氦 / 15% 甲烷（呈青蓝）/ 水氨冰幔',
+      composition: '约 83% 氢 / 15% 氦 / 2% 甲烷 / 水氨冰幔',
     },
     poetry: '躺着走了八十年，谁也没有叫醒它。',
   },
@@ -485,7 +485,7 @@ const MOONS: Body[] = [
     latin: 'Titan',
     type: 'moon',
     parent: 'saturn',
-    moon: { aAU: 0.01914, e: 0.0288, i: 0.35, periodDays: 15.945, phaseDeg: 250.0, nodeDeg: 28.06, nodeRate: 0, displayOrbit: 38 },
+    moon: { aAU: 0.00817, e: 0.0288, i: 0.35, periodDays: 15.945, phaseDeg: 250.0, nodeDeg: 28.06, nodeRate: 0, displayOrbit: 38 },
     kmRadius: 2574.7,
     displayRadius: 0.4,
     color: 0xd8a24a,
@@ -511,7 +511,7 @@ const MOONS: Body[] = [
     latin: 'Enceladus',
     type: 'moon',
     parent: 'saturn',
-    moon: { aAU: 0.00974, e: 0.0047, i: 0.02, periodDays: 1.370218, phaseDeg: 30.0, nodeDeg: 342.507, nodeRate: 0, displayOrbit: 24 },
+    moon: { aAU: 0.001591, e: 0.0047, i: 0.02, periodDays: 1.370218, phaseDeg: 30.0, nodeDeg: 342.507, nodeRate: 0, displayOrbit: 24 },
     kmRadius: 252.1,
     displayRadius: 0.18,
     color: 0xf2f6f8,
@@ -519,7 +519,7 @@ const MOONS: Body[] = [
     rotationHours: 32.88,
     tilt: 0,
     info: {
-      distance: '238 万 km（土星）',
+      distance: '23.8 万 km（土星）',
       radius: '252 km',
       mass: '0.00002 地球',
       period: '1.37 天',
@@ -537,7 +537,7 @@ const MOONS: Body[] = [
     latin: 'Iapetus',
     type: 'moon',
     parent: 'saturn',
-    moon: { aAU: 0.0293, e: 0.0286, i: 15.47, periodDays: 79.3215, phaseDeg: 200.0, nodeDeg: 81.105, nodeRate: 0, displayOrbit: 56 },
+    moon: { aAU: 0.0238, e: 0.0286, i: 15.47, periodDays: 79.3215, phaseDeg: 200.0, nodeDeg: 81.105, nodeRate: 0, displayOrbit: 56 },
     kmRadius: 734.5,
     displayRadius: 0.2,
     color: 0xa89680,
@@ -555,7 +555,7 @@ const MOONS: Body[] = [
       discovery: '1671 年，卡西尼',
       composition: '一半极暗、一半极亮，反照率相差十倍之巨',
     },
-    poetry: '一半漆黑一半雪白，像被劈开的两颗星球在互相伤害。',
+    poetry: '一半黑夜，一半雪白。愿你的每一面，都有人温柔看见。',
   },
   {
     id: 'triton',
@@ -563,7 +563,7 @@ const MOONS: Body[] = [
     latin: 'Triton',
     type: 'moon',
     parent: 'neptune',
-    moon: { aAU: 0.00286, e: 0.000016, i: 156.885, periodDays: -5.876854, phaseDeg: 90.0, nodeDeg: 178.1, nodeRate: 0, displayOrbit: 26 },
+    moon: { aAU: 0.002371, e: 0.000016, i: 156.885, periodDays: 5.876854, phaseDeg: 90.0, nodeDeg: 178.1, nodeRate: 0, displayOrbit: 26 },
     kmRadius: 1353.4,
     displayRadius: 0.32,
     color: 0xd0d8dc,
@@ -571,7 +571,7 @@ const MOONS: Body[] = [
     rotationHours: -141.04,
     tilt: 0,
     info: {
-      distance: '35,400 km（海王星）',
+      distance: '354,800 km（海王星）',
       radius: '1,353 km',
       mass: '0.0036 地球',
       period: '5.88 天（逆行）',
@@ -599,7 +599,7 @@ const MOONS: Body[] = [
     info: {
       distance: '9376 km（火星）',
       radius: '11.3 km',
-      mass: '1.8×10⁻¹⁵ 地球',
+      mass: '1.8×10⁻⁹ 地球',
       period: '7小时39分',
       rotation: '7小时39分',
       temperature: '−40°C',
@@ -607,7 +607,7 @@ const MOONS: Body[] = [
       discovery: '1877 年，阿萨夫·霍尔',
       composition: '碳质含硅岩石 / 布满沟槽',
     },
-    poetry: '正在坠落的太小石块，被火星一把锁死。',
+    poetry: '一颗小小的石头，也能拥有自己的轨道与归处。',
   },
   {
     id: 'deimos',
@@ -625,7 +625,7 @@ const MOONS: Body[] = [
     info: {
       distance: '23,460 km（火星）',
       radius: '6.2 km',
-      mass: '1.5×10⁻¹⁶ 地球',
+      mass: '2.5×10⁻¹⁰ 地球',
       period: '1.26 天',
       rotation: '1.26 天',
       temperature: '−40°C',
@@ -633,7 +633,7 @@ const MOONS: Body[] = [
       discovery: '1877 年，阿萨夫·霍尔',
       composition: '碳质含硅岩石 / 表土有风化层',
     },
-    poetry: '像一颗被磨圆了的小行星，从来没有人多看它一眼。',
+    poetry: '它很小，也很安静。但在火星的天空里，从不缺席。',
   },
   {
     id: 'charon',
@@ -641,7 +641,7 @@ const MOONS: Body[] = [
     latin: 'Charon',
     type: 'moon',
     parent: 'pluto',
-    moon: { aAU: 0.0001959, e: 0.0002, i: 0.08, periodDays: 6.3872, phaseDeg: 130.0, nodeDeg: 223.0, nodeRate: 0, displayOrbit: 3.2 },
+    moon: { aAU: 0.000131, e: 0.0002, i: 0.08, periodDays: 6.3872, phaseDeg: 130.0, nodeDeg: 223.0, nodeRate: 0, displayOrbit: 3.2 },
     kmRadius: 606,
     displayRadius: 0.24,
     color: 0x9e948b,
