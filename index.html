@@ -30,16 +30,18 @@
       <div id="vignette"></div>
 
       <header id="brand">
-        <h1>SOL</h1>
-        <p>一颗恒星，与它全部的随身物品</p>
+        <h1>SOL<span class="brand-dot"></span></h1>
+        <p>与宇宙，片刻相逢</p>
       </header>
+      <div id="observation"><span>NOW OBSERVING</span><strong id="observation-name">太阳系</strong><i></i></div>
+      <a id="credits" href="./textures/ATTRIBUTION.md" target="_blank" rel="noopener">影像 · Solar System Scope / CC BY 4.0</a>
 
       <div id="timebar" class="glass">
         <div class="date" id="date">—</div>
         <div class="row">
           <button id="play" class="icon" title="暂停 / 继续">❚❚</button>
-          <input id="speed" type="range" min="0" max="6" step="1" value="3" />
-          <span id="speedlabel" class="speedlabel">1秒 = 1周</span>
+          <input id="speed" aria-label="时间速度" type="range" min="0" max="7" step="1" value="2" />
+          <span id="speedlabel" class="speedlabel">1秒 = 1小时</span>
         </div>
         <div class="row">
           <button id="now" class="ghost">回到今天</button>
@@ -81,8 +83,8 @@
       <div id="intro">
         <div class="intro-inner">
           <h1 class="big">SOL</h1>
-          <p class="sub">一颗恒星，八颗行星，以及它们之间漫长的沉默</p>
-          <p class="hint">拖动旋转 · 滚轮缩放 · 点击天体</p>
+          <p class="sub">在漫长的宇宙里，与你共享这一刻</p>
+          <button id="skip-intro" type="button">进入星空 <span aria-hidden="true">→</span></button>
         </div>
       </div>
 

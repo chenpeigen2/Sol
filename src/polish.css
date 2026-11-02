@@ -112,3 +112,80 @@
   .hint { margin-top: 40px; font-size: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .cinema #dedication-display { animation: none; } }
+.cinema #timebar, .cinema #panel, .cinema #hud, .cinema #quickbar,
+.cinema #observation, .cinema #credits, .cinema #telemetry, .cinema .missionbar,
+.cinema #brand, .cinema #labels { display: none !important; }
+.cinema #dedication-display { z-index: 6; }
+
+/* The planet surface is the subject. Keep the surrounding chrome crisp and readable. */
+:root { --text-dim: #b8c2d394; --line: #d6dfec20; }
+#scene { background: #020408; }
+#brand { top: 28px; left: 36px; }
+#brand h1 { display: flex; align-items: baseline; gap: 5px; font-size: 30px; letter-spacing: 0; font-family: Georgia, var(--serif); }
+.brand-dot { width: 4px; height: 4px; border-radius: 50%; background: #e8cfa4; }
+#brand p { letter-spacing: .16em; font-size: 11px; color: #bdc5d08f; }
+#observation { position: absolute; left: 36px; top: 198px; pointer-events: none; opacity: 0; transition: opacity 1.2s; }
+#app.ready #observation { opacity: 1; }
+#observation span { display: block; font: 8px monospace; letter-spacing: .24em; color: #92b5c5a3; }
+#observation strong { display: block; font: 12px var(--sans); letter-spacing: .12em; margin-top: 10px; color: #e2ddd2b8; font-weight: 400; }
+#observation i { display: block; height: 1px; width: 28px; background: #e8cfa454; margin-top: 18px; }
+#credits { position: absolute; bottom: 15px; right: 28px; font-size: 8px; color: #b6c0ce66; text-decoration: none; letter-spacing: .04em; opacity: 0; transition: opacity 1s; }
+#app.ready #credits { opacity: 1; }
+#credits:hover { color: #ead5b0; }
+#experience .missionbar { left: 32px; gap: 20px; }
+#experience .missionbar button { min-height: 36px; display: inline-flex; align-items: center; gap: 7px; font-size: 11px; color: #b8c2d398; }
+#experience .missionbar span { margin: 0; }
+button svg { flex: 0 0 auto; vertical-align: middle; }
+#play { display: grid; place-items: center; }
+#panel .close { display: grid; place-items: center; width: 28px; height: 28px; top: 9px; right: 9px; }
+#panel { background: linear-gradient(100deg,#070b12e0,#070b1266); border-left-color: #e8cfa440; width: 300px; }
+#panel .view-presets button, #panel .related button { min-height: 28px; font-size: 10px; color: #c5cbd195; }
+#panel .view-presets button:hover, #panel .related button:hover { color: #ead7b8; }
+.poetry { color: #dbceb9bf; line-height: 2; font-size: 14px; }
+#panel .pname span { color: #b0b7c8; opacity: .8; font-size: 9px; }
+#timebar { top: 28px; right: 28px; }
+#timebar .date { font-variant-numeric: tabular-nums; font-family: var(--sans); font-size: 13px; letter-spacing: .08em; }
+#quickbar { gap: 8px; bottom: 30px; }
+#quickbar button { min-width: 38px; color: #b5c0d19c; font-size: 11px; }
+#app.immersive #quickbar { opacity: .8; }
+#hud { left: 32px; bottom: 30px; }
+#hud .toggle { color: #b6c1d093; }
+#skip-intro { pointer-events: auto; margin-top: 38px; border: none; border-bottom: 1px solid #e8cfa43d; padding: 12px 8px; background: none; color: #dfd1bb9e; font: 11px var(--sans); letter-spacing: .16em; cursor: pointer; }
+#skip-intro:hover { color: #ecd7b3; }
+#skip-intro span { margin-left: 20px; }
+#intro.hide #skip-intro { visibility: hidden; pointer-events: none; }
+.big { font-size: 114px; letter-spacing: .32em; text-indent: .32em; }
+#dedication-display { font-size: 26px; }
+#dedication-display, #tour-caption p { overflow-wrap: anywhere; }
+.cinema #observation, .cinema #credits { opacity: 0 !important; }
+#experience .tour-actions button { display: grid; place-items: center; width: 32px; height: 32px; padding: 6px; }
+#experience .tour-actions button:last-child { margin-left: 16px; }
+#explorer, #letter { width: 340px; }
+#experience .body-result { border-left: none; border-bottom: 1px solid #ccd6e110; border-radius: 0; padding: 11px 4px; }
+#experience .body-result i { box-shadow: none; }
+#experience .body-result:hover { background: #cbd9ed08; border-color: #e8cfa43d; }
+#experience .letter-actions button { border-radius: 3px; line-height: 1.6; }
+@media (max-width: 760px) {
+  #timebar { top: 12px; right: 14px; left: 14px; padding: 12px; }
+  #experience .missionbar { left: 16px; right: 16px; top: 145px; gap: 0; justify-content: space-between; }
+  #experience .missionbar button { min-width: 38px; min-height: 38px; justify-content: center; }
+  #experience .missionbar button span { display: none; }
+  #experience .missionbar svg { width: 17px; height: 17px; }
+  #observation { top: 210px; left: 26px; }
+  #observation span { font-size: 7px; }
+  #observation strong { font-size: 10px; }
+  #observation i { margin-top: 10px; }
+  #panel { left: 14px; right: 14px; width: auto; padding: 18px 22px; bottom: 68px; max-height: 37vh; }
+  #panel .pname h2 { font-size: 23px; }
+  #panel .view-presets { margin: 12px 0; gap: 10px; }
+  .poetry { margin: 12px 0; font-size: 12px; }
+  #quickbar { width: auto; max-width: calc(100vw - 28px); bottom: 22px; gap: 4px; padding: 0; }
+  #quickbar button { min-width: 34px; font-size: 10px; }
+  #credits { right: 14px; bottom: 6px; font-size: 7px; }
+  #hud { left: 14px; bottom: 72px; }
+  #app.immersive #hud { opacity: 0; visibility: hidden; }
+  #explorer, #letter { width: auto; left: 14px; right: 14px; top: 199px; }
+  #dedication-display { font-size: 19px; }
+  .big { font-size: 66px; }
+  #toast { top: 199px; }
+}

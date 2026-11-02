@@ -39,26 +39,45 @@ uniform vec3  uRimColor;
 uniform float uRimStrength;
 uniform vec3  uAtmoColor;
 uniform float uAtmoStrength;
+uniform float uEarth;
+uniform float uRelief;
+uniform vec2 uTexel;
+
+// Derivative bump mapping: local tonal detail creates small-scale relief, not silhouette noise.
+vec3 surfaceNormal(vec3 normal, vec3 albedo) {
+  vec3 q0 = dFdx(vWorldPos), q1 = dFdy(vWorldPos);
+  float h = dot(albedo, vec3(0.2126, 0.7152, 0.0722));
+  vec3 r1 = cross(q1, normal), r2 = cross(normal, q0);
+  float det = dot(q0, r1);
+  vec3 gradient = sign(det) * (dFdx(h) * r1 + dFdy(h) * r2);
+  return normalize(abs(det) * normal - gradient * uRelief);
+}
 
 void main(){
-  vec3 N = normalize(vNormalW);
+  vec3 base = texture2D(uMap, vUv).rgb;
+  vec3 geometricNormal = normalize(vNormalW);
+  vec3 N = surfaceNormal(geometricNormal, base);
   vec3 V = normalize(cameraPosition - vWorldPos);
   float ndl = dot(N, uSunDir);
-
-  // 软化的晨昏线
-  float light = smoothstep(-0.20, 0.34, ndl);
-
-  vec3 base = texture2D(uMap, vUv).rgb;
-  vec3 col = base * (uSunColor * uSunIntensity * light + uAmbient);
+  float terminator = smoothstep(-0.07, 0.12, dot(geometricNormal, uSunDir));
+  float diffuse = pow(max(ndl, 0.0), 0.72) * terminator;
+  vec3 col = base * (uSunColor * uSunIntensity * diffuse + uAmbient);
 
   if (uHasNight > 0.5) {
     vec3 night = texture2D(uNightMap, vUv).rgb;
-    col += night * (1.0 - light) * uNightIntensity;
+    col += night * (1.0 - smoothstep(-0.16, 0.1, ndl)) * uNightIntensity;
   }
 
-  float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);
-  col += fres * uRimColor * uRimStrength * smoothstep(-0.55, 0.65, ndl);
-  col += fres * uAtmoColor * uAtmoStrength;
+  // Blue water glints; dry land remains matte. Imagery is already linear when sampled.
+  float water = smoothstep(0.008, 0.04, base.b - max(base.r, base.g) * 0.83) * uEarth;
+  vec3 H = normalize(V + uSunDir);
+  float specular = pow(max(dot(N, H), 0.0), 95.0) * water * terminator;
+  col += vec3(0.55, 0.68, 0.78) * specular * 0.32;
+
+  float fres = pow(1.0 - max(dot(geometricNormal, V), 0.0), 4.5);
+  float litRim = smoothstep(-0.2, 0.55, dot(geometricNormal, uSunDir));
+  col += fres * uRimColor * uRimStrength * litRim;
+  col += fres * uAtmoColor * uAtmoStrength * 0.12 * litRim;
 
   gl_FragColor = vec4(col, 1.0);
   #include <logdepthbuf_fragment>
@@ -78,15 +97,17 @@ uniform vec3  uSunDir;
 uniform vec3  uSunColor;
 uniform float uSunIntensity;
 uniform vec3  uAmbient;
+uniform float uCloudImage;
 
 void main(){
   vec4 tex = texture2D(uMap, vUv);
-  if (tex.a < 0.02) discard;
+  float alpha = uCloudImage > 0.5 ? smoothstep(0.12, 0.88, tex.r) : tex.a;
+  if (alpha < 0.015) discard;
   vec3 N = normalize(vNormalW);
   float ndl = dot(N, uSunDir);
-  float light = smoothstep(-0.30, 0.42, ndl);
-  vec3 col = tex.rgb * (uSunColor * uSunIntensity * light + uAmbient);
-  gl_FragColor = vec4(col, tex.a * 0.9);
+  float light = pow(max(ndl, 0.0), 0.65) * smoothstep(-0.08, 0.18, ndl);
+  vec3 col = vec3(0.94, 0.97, 1.0) * (uSunColor * uSunIntensity * light + uAmbient);
+  gl_FragColor = vec4(col, alpha * 0.88);
   #include <logdepthbuf_fragment>
 }
 `;
@@ -106,9 +127,11 @@ uniform vec3  uSunDir;
 void main(){
   vec3 N = normalize(vNormalW);
   vec3 V = normalize(cameraPosition - vWorldPos);
-  float fres = pow(1.0 - max(dot(N, V), 0.0), 3.4);
-  float lit = smoothstep(-0.7, 0.6, dot(N, uSunDir));
-  float a = fres * uStrength * (0.25 + 0.75 * lit);
+  // Render the back of a thin shell. Back-facing normals need the opposite dot sign.
+  float facing = clamp(-dot(N, V), 0.0, 1.0);
+  float fres = pow(1.0 - facing, 5.0);
+  float lit = smoothstep(-0.2, 0.55, dot(N, uSunDir));
+  float a = fres * uStrength * lit;
   gl_FragColor = vec4(uColor * a, a);
   #include <logdepthbuf_fragment>
 }
@@ -157,6 +180,8 @@ export interface PlanetMaterialOptions {
   rimStrength: number;
   atmoColor: number;
   atmoStrength: number;
+  earth?: boolean;
+  relief?: number;
 }
 
 export function createPlanetMaterial(opts: PlanetMaterialOptions): THREE.ShaderMaterial {
@@ -164,14 +189,17 @@ export function createPlanetMaterial(opts: PlanetMaterialOptions): THREE.ShaderM
     vertexShader: PLANET_VERT,
     fragmentShader: PLANET_FRAG,
     uniforms: {
+      uEarth: { value: opts.earth ? 1 : 0 },
+      uRelief: { value: opts.relief ?? 0 },
+      uTexel: { value: new THREE.Vector2(1 / 2048, 1 / 1024) },
       uMap: { value: opts.day },
       uNightMap: { value: opts.night ?? opts.day },
       uHasNight: { value: opts.night ? 1 : 0 },
       uSunDir: { value: new THREE.Vector3(1, 0, 0) },
       uSunColor: { value: new THREE.Color(1, 0.97, 0.92) },
       uSunIntensity: { value: 1 },
-      uAmbient: { value: new THREE.Color(0.035, 0.04, 0.06) },
-      uNightIntensity: { value: 1.6 },
+      uAmbient: { value: new THREE.Color(0.018, 0.022, 0.03) },
+      uNightIntensity: { value: 0.8 },
       uRimColor: { value: new THREE.Color(opts.rimColor) },
       uRimStrength: { value: opts.rimStrength },
       uAtmoColor: { value: new THREE.Color(opts.atmoColor) },
@@ -185,6 +213,7 @@ export function createCloudMaterial(day: THREE.Texture): THREE.ShaderMaterial {
     vertexShader: PLANET_VERT,
     fragmentShader: CLOUD_FRAG,
     uniforms: {
+      uCloudImage: { value: 0 },
       uMap: { value: day },
       uSunDir: { value: new THREE.Vector3(1, 0, 0) },
       uSunColor: { value: new THREE.Color(1, 0.97, 0.92) },

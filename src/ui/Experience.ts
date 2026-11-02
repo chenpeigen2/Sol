@@ -1,6 +1,7 @@
 import { BODIES, BODY_BY_ID } from '../data/bodies';
 import { J2000, jdFromDate } from '../core/time';
 import { smoothstep } from '../core/easing';
+import { polishIcons } from './icons';
 import type { ViewPreset } from '../scene/CameraRig';
 
 export interface ExperienceActions {
@@ -79,6 +80,7 @@ export class Experience {
     try { this.message.value = localStorage.getItem('sol.dedication') ?? '在这个宇宙里，很高兴遇见你。'; } catch { /* storage optional */ }
     (this.get('travel-date') as HTMLInputElement).value = new Date().toISOString().slice(0, 10);
     this.bind();
+    polishIcons(this.root);
     this.renderResults('');
   }
 

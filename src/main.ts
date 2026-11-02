@@ -5,7 +5,7 @@ import { App } from './app';
 
 const container = document.getElementById('scene')!;
 
-function boot() {
+async function boot() {
   let app: App;
   try { app = new App(container); }
   catch (error) {
@@ -17,6 +17,7 @@ function boot() {
     console.error(error);
     return;
   }
+  await app.ready();
   const loading = document.getElementById('loading')!;
   // Keep the critical boot guard until the first scene frame has reached the browser.
   requestAnimationFrame(() => requestAnimationFrame(() => {

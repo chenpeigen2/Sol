@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { SolarSystem, AU_SCALE } from './scene/SolarSystem';
 import { CameraRig, type ViewPreset } from './scene/CameraRig';
 import { Experience } from './ui/Experience';
+import { polishIcons, setPlaybackIcon } from './ui/icons';
 import { BODIES, BODY_BY_ID, type Body } from './data/bodies';
 import { J2000, SPEED_PRESETS, centuriesSinceJ2000, dateFromJd, formatDate, jdFromDate } from './core/time';
 
@@ -72,13 +73,16 @@ export class App {
   private container: HTMLElement;
 
   private jd = jdFromDate(new Date());
-  private speedIndex = 3;
+  private speedIndex = 2;
+  private viewingPlayback: { speed: number; direction: number } | null = null;
   private playing = true;
   private scrubbing = false;
   private direction = 1;
   private experience: Experience;
   private tourPlayback: { playing: boolean; speed: number } | null = null;
   private isCinema = false;
+  private layersVisible = true;
+  private orbitsOn = true;
 
   private introIndex = -1;
   private introT = 0;
@@ -153,6 +157,8 @@ export class App {
 
     this.buildQuickbar();
     this.buildLabels();
+    polishIcons();
+    setPlaybackIcon(this.els.play, this.playing);
     this.bindUI();
     this.updateSpeedLabel();
     this.updateSizeTags(1);
@@ -173,6 +179,8 @@ export class App {
       cinema: on => {
         this.isCinema = on;
         this.rig.controls.autoRotate = on && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        this.layersVisible = !on;
+        this.applyLayerVisibility();
         this.rig.controls.autoRotateSpeed = 0.18;
       },
       capture: message => this.capture(message),
@@ -184,16 +192,16 @@ export class App {
         const p = this.system.comet.position;
         const target = new THREE.Vector3(p.x, p.z, -p.y);
         this.rig.setImmediate(target.clone().add(new THREE.Vector3(80, 65, 160)), target.clone().add(new THREE.Vector3(25, 0, -10)));
-        this.playing = false; this.els.play.textContent = '▶'; this.syncScrub();
+        this.playing = false; setPlaybackIcon(this.els.play, false); this.syncScrub();
       },
       tourMode: on => {
         if (on) {
           this.tourPlayback = { playing: this.playing, speed: this.speedIndex };
-          this.playing = true; this.speedIndex = 1;
+          this.playing = true; this.speedIndex = 2;
           this.els.panel.classList.remove('show');
-            document.getElementById('app')!.classList.add('touring');
-        this.rig.controls.autoRotate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        this.rig.controls.autoRotateSpeed = 0.16;
+          document.getElementById('app')!.classList.add('touring');
+          this.rig.controls.autoRotate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          this.rig.controls.autoRotateSpeed = 0.16;
         } else {
           if (this.tourPlayback) {
             this.playing = this.tourPlayback.playing; this.speedIndex = this.tourPlayback.speed;
@@ -203,7 +211,7 @@ export class App {
           this.rig.controls.autoRotate = false;
         }
         this.els.speed.value = String(this.speedIndex);
-        this.els.play.textContent = this.playing ? '❚❚' : '▶';
+        setPlaybackIcon(this.els.play, this.playing);
         this.updateSpeedLabel();
       },
     });
@@ -217,7 +225,16 @@ export class App {
     this.introIndex = 0;
     this.introT = 0;
     this.applyIntroCamera(0);
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) this.skipIntro();
+    const prefersStill = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersStill) this.skipIntro();
+    else {
+      // Do not consume the opening camera sequence behind the texture-loading curtain.
+      const sequence = this.introIndex;
+      this.introIndex = -2;
+      void this.system.ready.then(() => {
+        if (this.introIndex === -2) { this.introIndex = sequence; this.introT = 0; }
+      });
+    }
 
     window.addEventListener('resize', () => this.onResize());
     this.system.renderer.domElement.addEventListener('pointerdown', (e) => this.onPointerDown(e));
@@ -255,6 +272,7 @@ export class App {
   }
 
   private bindUI() {
+    document.getElementById('skip-intro')!.onclick = () => this.skipIntro();
     this.els.play.addEventListener('click', () => this.togglePlay());
     this.els.speed.addEventListener('input', () => {
       this.speedIndex = Number(this.els.speed.value);
@@ -291,7 +309,8 @@ export class App {
       const btn = e.currentTarget as HTMLElement;
       const on = !btn.classList.contains('on');
       btn.classList.toggle('on', on);
-      this.system.setOrbitsVisible(on);
+      this.orbitsOn = on;
+      this.applyLayerVisibility();
     });
     document.getElementById('toggle-labels')!.addEventListener('click', (e) => {
       const btn = e.currentTarget as HTMLElement;
@@ -331,7 +350,7 @@ export class App {
 
   private togglePlay() {
     this.playing = !this.playing;
-    this.els.play.textContent = this.playing ? '❚❚' : '▶';
+    setPlaybackIcon(this.els.play, this.playing);
   }
 
   private syncScrub() {
@@ -383,8 +402,14 @@ export class App {
     this.finishIntro();
     const body = BODY_BY_ID.get(id);
     if (!body) return;
+    if (!this.viewingPlayback && !this.tourPlayback) this.viewingPlayback = { speed: this.speedIndex, direction: this.direction };
+    // A close-up should reveal geography, not spin several years per second.
+    this.speedIndex = Math.min(this.speedIndex, 1);
+    this.els.speed.value = String(this.speedIndex);
+    this.updateSpeedLabel();
     this.selected = id;
 
+    document.getElementById('observation-name')!.textContent = `${body.name} / ${body.latin.toUpperCase()}`;
     this.els.title.textContent = body.name;
     this.els.latin.textContent = body.latin.toUpperCase();
     this.els.poetry.textContent = body.poetry;
@@ -432,6 +457,13 @@ export class App {
   private closePanel() {
     this.els.panel.classList.remove('show');
     this.selected = null;
+    document.getElementById('observation-name')!.textContent = '太阳系 / SOLAR SYSTEM';
+    if (this.viewingPlayback) {
+      this.speedIndex = this.viewingPlayback.speed;
+      this.viewingPlayback = null;
+      this.els.speed.value = String(this.speedIndex);
+      this.updateSpeedLabel();
+    }
     this.following = false;
     this.els.follow.classList.remove('on');
     this.rig.release();
@@ -498,6 +530,12 @@ export class App {
     this.rig.frameAll(false);
   }
 
+  private applyLayerVisibility() {
+    this.system.setOrbitsVisible(this.orbitsOn && this.layersVisible);
+    for (const t of this.system.trails.values()) t.line.visible = this.layersVisible && document.getElementById('toggle-trails')!.classList.contains('on');
+    this.system.comet.group.visible = this.layersVisible && this.system.comet.enabled;
+  }
+
   private updateImmersive() {
     document.getElementById('app')!.classList.toggle('immersive', Boolean(this.selected) && !this.isCinema);
   }
@@ -507,6 +545,7 @@ export class App {
     this.els.timebar.classList.add('ready');
     this.els.hud.classList.add('ready');
     this.els.quick.classList.add('ready');
+    document.getElementById('app')!.classList.add('ready');
   }
 
   private applyIntroCamera(dt: number) {
@@ -581,9 +620,18 @@ export class App {
     } else {
       this.rig.update(dt);
     }
+    // Shift portrait composition upward only while the information sheet occupies the bottom.
+    const portrait = this.system.camera.aspect < 0.9;
+    const sheet = this.selected && !this.isCinema && !this.tourPlayback;
+    const camera = this.system.camera;
+    if (portrait && sheet) {
+      const w = this.container.clientWidth, h = this.container.clientHeight;
+      camera.setViewOffset(w, h, 0, h * 0.14, w, h);
+    } else if (camera.view?.enabled) camera.clearViewOffset();
 
     this.updateLabels();
     this.els.date.textContent = formatDate(this.jd);
+    this.applyLayerVisibility();
     this.system.render(elapsed);
   }
 
@@ -673,11 +721,16 @@ export class App {
     lines.forEach((text, i) => ctx.fillText(text, w / 2, h - 90 - (lines.length - 1 - i) * font * 1.5));
     ctx.font = `${Math.max(11, font * 0.42)}px sans-serif`; ctx.fillStyle = '#abb7c8';
     ctx.fillText(`SOL · ${formatDate(this.jd)} UTC`, w / 2, h - 35);
+    ctx.font = `${Math.max(8, font * 0.28)}px sans-serif`;
+    ctx.fillStyle = '#8c99a9';
+    ctx.fillText('Planet imagery: Solar System Scope · CC BY 4.0 · solarsystemscope.com/textures', w / 2, h - 14);
     const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error('PNG export failed')), 'image/png'));
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a'); link.href = url; link.download = 'SOL-星空明信片.png'; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
+
+  async ready() { await this.system.ready; }
 
   /* 供外部调用 */
   get currentTime() {
@@ -691,6 +744,8 @@ export class App {
     this.rig.controls.enabled = true;
     this.revealUI();
     this.rig.focus(id, { immediate, padding: 6 });
+    this.els.intro.style.transition = 'none';
+    this.els.intro.style.opacity = '0';
   }
 
   /** 调试用：设定模拟时刻 */

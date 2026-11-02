@@ -31,6 +31,7 @@ export function formatDate(jd: number): string {
 /** 时间倍率：每真实秒推进多少模拟天 */
 export const SPEED_PRESETS = [
   { label: '实时', daysPerSecond: 1 / 86400 },
+  { label: '1秒 = 1分钟', daysPerSecond: 1 / 1440 },
   { label: '1秒 = 1小时', daysPerSecond: 1 / 24 },
   { label: '1秒 = 1天', daysPerSecond: 1 },
   { label: '1秒 = 1周', daysPerSecond: 7 },

@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { IMAGERY_IDS, loadSurfaceImage } from '../render/imagery';
 import { Comet } from '../render/Comet';
 import {
   DEG,
@@ -159,6 +160,8 @@ export class SolarSystem {
   readonly comet = new Comet();
   private composer: EffectComposer;
   private bloom: UnrealBloomPass;
+  imageryReady: 'loading' | 'ready' | 'fallback' = 'loading';
+  readonly ready: Promise<void>;
 
   readonly nodes = new Map<string, BodyNode>();
   readonly orbitLines: OrbitLine[] = [];
@@ -219,11 +222,35 @@ export class SolarSystem {
     this.buildBelts();
     this.buildHaze();
     this.ecliptic.add(this.comet.group);
-    this.composer = new EffectComposer(this.renderer);
+    const target = new THREE.WebGLRenderTarget(opts.container.clientWidth, opts.container.clientHeight, { type: THREE.HalfFloatType });
+    // Canvas MSAA is bypassed by postprocessing; multisample the actual scene target.
+    target.samples = Math.min(4, this.renderer.capabilities.maxSamples);
+    this.composer = new EffectComposer(this.renderer, target);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(opts.container.clientWidth, opts.container.clientHeight), 0.4, 0.5, 0.85);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(opts.container.clientWidth, opts.container.clientHeight), 0.20, 0.3, 1.05);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
+    this.ready = this.loadImagery();
+  }
+
+  private async loadImagery() {
+    const jobs = IMAGERY_IDS.map(async id => {
+      const node = this.nodes.get(id)!;
+      const day = await loadSurfaceImage(this.renderer, id);
+      node.material!.uniforms.uMap.value = day;
+    });
+    jobs.push((async () => {
+      const earth = this.nodes.get('earth')!;
+      const [night, clouds] = await Promise.all([
+        loadSurfaceImage(this.renderer, 'earth-night'),
+        loadSurfaceImage(this.renderer, 'earth-clouds', false),
+      ]);
+      earth.material!.uniforms.uNightMap.value = night;
+      earth.cloudMaterial!.uniforms.uMap.value = clouds;
+      earth.cloudMaterial!.uniforms.uCloudImage.value = 1;
+    })());
+    const result = await Promise.allSettled(jobs);
+    this.imageryReady = result.every(r => r.status === 'fulfilled') ? 'ready' : 'fallback';
   }
 
   setBloom(enabled: boolean) { this.bloom.enabled = enabled; }
@@ -337,8 +364,10 @@ export class SolarSystem {
           rimStrength: atmo?.rimStrength ?? 0.12,
           atmoColor: atmo?.color ?? body.color,
           atmoStrength: atmo?.strength ?? 0,
+          earth: body.id === 'earth',
+          relief: body.texture === 'rocky' || body.texture === 'ice' ? (body.id === 'earth' ? 0.0003 : 0.0008) : 0,
         });
-        const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 48), mat);
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 128, 96), mat);
         mesh.frustumCulled = false;
         node.pivot.add(mesh);
         node.mesh = mesh;
@@ -346,7 +375,7 @@ export class SolarSystem {
 
         if (tex.clouds) {
           const cm = createCloudMaterial(tex.clouds);
-          const cm2 = new THREE.Mesh(new THREE.SphereGeometry(1.012, 64, 48), cm);
+          const cm2 = new THREE.Mesh(new THREE.SphereGeometry(1.006, 96, 64), cm);
           cm2.frustumCulled = false;
           node.pivot.add(cm2);
           node.cloudMesh = cm2;
@@ -355,7 +384,7 @@ export class SolarSystem {
 
         if (atmo && atmo.strength > 0) {
           const hm = createHaloMaterial(atmo.color, atmo.strength);
-          const halo = new THREE.Mesh(new THREE.SphereGeometry(1.055, 48, 32), hm);
+          const halo = new THREE.Mesh(new THREE.SphereGeometry(1.018, 96, 64), hm);
           halo.frustumCulled = false;
           node.pivot.add(halo);
           node.halo = halo;
@@ -368,7 +397,7 @@ export class SolarSystem {
             map: this.starSpriteMat.map,
             color: body.color,
             transparent: true,
-            opacity: body.type === 'moon' ? 0.3 : 0.34,
+            opacity: 0,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
           }),
@@ -528,6 +557,7 @@ export class SolarSystem {
   update(daysSinceJ2000: number, centuries: number) {
     const toSun = new THREE.Vector3();
     const camPos = this.camera.position;
+    const screenHeight = this.renderer.domElement.clientHeight;
     const camDir = new THREE.Vector3();
     this.camera.getWorldDirection(camDir);
 
@@ -581,14 +611,17 @@ export class SolarSystem {
       }
       if (node.halo) node.halo.scale.setScalar(radius);
       if (node.ring) node.ring.scale.setScalar(radius);
+      node.holder.getWorldPosition(node.world);
       if (node.glow) {
         const g = node.glow;
         const dist = camPos.distanceTo(node.world);
         if (body.type === 'star') {
-          g.scale.setScalar(Math.max(radius * 10, dist * 0.012));
+          g.scale.setScalar(Math.max(radius * 6, dist * 0.012));
         } else {
-          // 保证远处仍是一个可见的光点
-          g.scale.setScalar(Math.max(radius * 3, dist * 0.005, 0.05));
+          // Only subpixel planets need a marker. Never lay a blurred sprite over a resolved disk.
+          const projected = radius / Math.max(dist, 1e-6) * screenHeight;
+          (g.material as THREE.SpriteMaterial).opacity = 0.48 * (1 - THREE.MathUtils.smoothstep(projected, 1, 7));
+          g.scale.setScalar(Math.max(radius * 1.8, dist * 0.004, 0.015));
         }
       }
 
@@ -608,6 +641,8 @@ export class SolarSystem {
       }
 
       if (node.material) {
+        const relief = node.material.uniforms.uRelief;
+        if (relief) relief.value = (body.texture === 'rocky' || body.texture === 'ice' ? (body.id === 'earth' ? 0.0003 : 0.0008) : 0) * radius;
         const u = node.material.uniforms.uSunDir;
         if (u) u.value.copy(toSun);
       }

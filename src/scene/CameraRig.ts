@@ -57,7 +57,13 @@ export class CameraRig {
       dist = span * 3.4;
     }
     dist *= Math.max(1, 0.9 / this.system.camera.aspect);
-    const dir = DIRECTIONS[view === 'system' ? 'oblique' : view];
+    let dir = DIRECTIONS[view === 'system' ? 'oblique' : view].clone();
+    if (view === 'oblique' && id !== 'sun') {
+      // Approach from the sunlit side, with enough phase to reveal the terminator.
+      const sunlight = this.system.worldPositionOf(id).normalize().negate();
+      const side = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), sunlight).normalize();
+      dir = sunlight.multiplyScalar(0.85).addScaledVector(side, 0.55).add(new THREE.Vector3(0, 0.4, 0)).normalize();
+    }
     this.flyTo(id, dir, dist, opts.immediate ?? false, view === 'system' ? 4.2 : 3.6);
     this.followId = opts.follow === false ? null : id;
   }
