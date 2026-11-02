@@ -1,5 +1,6 @@
 import { BODIES, BODY_BY_ID } from '../data/bodies';
 import { J2000, jdFromDate } from '../core/time';
+import { smoothstep } from '../core/easing';
 import type { ViewPreset } from '../scene/CameraRig';
 
 export interface ExperienceActions {
@@ -47,6 +48,7 @@ export class Experience {
         <button id="cinema">✧ <span>浪漫模式</span></button>
         <button id="open-letter">♡ <span>写给你</span></button>
         <button id="capture">↓ <span>留念</span></button>
+        <button id="toggle-details" aria-pressed="false">⋯ <span>观测</span></button>
       </nav>
       <section id="explorer" class="glass" hidden aria-label="探索控制台">
         <header><div><small>FLIGHT DECK</small><h2>选择你的远方</h2></div><button data-close="explorer" aria-label="关闭探索">×</button></header>
@@ -82,8 +84,19 @@ export class Experience {
 
   private get(id: string) { return this.root.querySelector<HTMLElement>(`#${id}`)!; }
   private bind() {
-    this.get('open-explorer').onclick = () => { this.explorer.hidden = !this.explorer.hidden; if (!this.explorer.hidden) this.get('body-search').focus(); };
-    this.get('open-letter').onclick = () => { this.get('letter').hidden = !this.get('letter').hidden; };
+    this.get('open-explorer').onclick = () => {
+      this.get('letter').hidden = true;
+      this.explorer.hidden = !this.explorer.hidden;
+      if (!this.explorer.hidden) this.get('body-search').focus();
+    };
+    this.get('open-letter').onclick = () => {
+      this.explorer.hidden = true;
+      this.get('letter').hidden = !this.get('letter').hidden;
+    };
+    this.get('toggle-details').onclick = () => {
+      const on = document.getElementById('app')!.classList.toggle('instruments');
+      this.get('toggle-details').setAttribute('aria-pressed', String(on));
+    };
     this.root.querySelectorAll<HTMLElement>('[data-close]').forEach(b => b.onclick = () => { this.get(b.dataset.close!).hidden = true; });
     this.get('body-search').oninput = e => this.renderResults((e.target as HTMLInputElement).value);
     this.root.querySelectorAll<HTMLElement>('[data-overview]').forEach(b => b.onclick = () => {
@@ -166,6 +179,7 @@ export class Experience {
   private goChapter(index: number) {
     this.chapter = index;
     this.chapterTime = 0;
+    this.caption.style.setProperty('--caption-opacity', '0');
     const c = CHAPTERS[index];
     this.actions.select(c.id, c.view);
     this.get('chapter-title').textContent = c.title;
@@ -201,6 +215,7 @@ export class Experience {
   update(dt: number, jd: number, selected: string | null, distanceAU: number, radius: number) {
     if (this.chapter >= 0) {
       this.chapterTime += dt;
+      this.caption.style.setProperty('--caption-opacity', String(smoothstep(0, 1.4, this.chapterTime) * (1 - smoothstep(10.8, 12, this.chapterTime))));
       this.progress.style.width = `${Math.min(100, this.chapterTime / 12 * 100)}%`;
       if (this.chapterTime >= 12) {
         if (this.chapter === CHAPTERS.length - 1) { this.stopTour(); this.notify('旅程没有终点。你可以继续探索。'); }

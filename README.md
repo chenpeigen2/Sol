@@ -38,13 +38,14 @@ npm run preview    # 构建产物预览
 - 地球海陆为程序化虚构地形，不是地理地图；城市灯光也是艺术化示意。星点为种子随机生成，不是真实恒星目录。
 - 天体转轴倾角用于表现季节感，但不含完整 IAU 自转极方向模型。
 - 小行星带 4200 个、柯伊伯带 2600 个实例，GPU 求开普勒轨道。尘埃盘与彗星尾的亮度、密度都为艺术夸张。
-- 土星环使用径向密度剖面及行星圆柱阴影近似；天王星环为同一艺术化环纹理，并非真实环系复原。
+- 土星环使用径向密度剖面及行星圆柱阴影近似（半影柔化）；天王星环为同一艺术化环纹理，并非真实环系复原。
 - 物理数据是近似科普值，卫星数等会随新发现变化。
 
 ## 测试
 
 ```bash
-npm test             # 开普勒方程、坐标路径一致性、比例检查
+npm test             # 开普勒方程、坐标路径一致性、比例检查、相机插值
+npm run test:startup  # 首屏无原始控件闪现（需要 dev server）
 npm run test:browser  # 需要 dev server + 系统 Edge；BROWSER_CHANNEL 可改 chrome
 ```
 
@@ -53,10 +54,22 @@ npm run test:browser  # 需要 dev server + 系统 Edge；BROWSER_CHANNEL 可改
 ## 结构
 
 ```text
-src/core/              开普勒力学、儒略日
+src/core/              开普勒力学、儒略日、缓动
 src/data/              天体数据、程序化配色
 src/render/            材质、噪声、表面生成、星空、带状小天体、彗星
 src/scene/             场景与相机飞行/跟随
 src/ui/Experience.ts   探索控制台、巡游、寄语与遥测 UI
 src/app.ts             时间/选择/场景编排、PNG 合成
+src/polish.css         视觉打磨层（字体、层次、留白）
+```
+
+## 部署
+
+构建产物是纯静态文件，用任意静态服务器托管即可（需通过 HTTP 访问，不能双击 HTML）。
+当前部署为独立 Nginx 容器，映射 4174 端口，只读挂载 `/srv/sol/releases/<版本>`：
+
+```bash
+docker rm -f sol-web
+docker run -d --name sol-web --restart unless-stopped \
+  -p 4174:80 -v /srv/sol/releases/<版本>:/usr/share/nginx/html:ro nginx:1.27-alpine
 ```

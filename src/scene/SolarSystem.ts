@@ -119,16 +119,16 @@ void main(){
   vec4 t = texture2D(uMap, vUv);
   if (t.a < 0.01) discard;
 
-  // 行星在环上投下的阴影（近似为圆柱阴影）
+  // The planet's shadow on the rings: a soft cylinder along the sun direction.
   vec3 L = normalize(uSunDir);
   vec3 toC = uPlanetCenter - vWorldPos;
   float along = dot(toC, L);
   float perp = length(toC - L * along);
-  float shadow = smoothstep(uPlanetRadius * 0.97, uPlanetRadius * 1.05, perp);
-  float shade = along > 0.0 ? mix(0.16, 1.0, shadow) : 1.0;
+  // Soft penumbra, and only on the anti-sun side.
+  float shadow = along > 0.0 ? 1.0 - smoothstep(uPlanetRadius * 0.82, uPlanetRadius * 1.22, perp) : 0.0;
 
-  vec3 col = t.rgb * uBrightness * (0.10 + 0.90 * shade);
-  gl_FragColor = vec4(col, t.a * mix(0.55, 1.0, shade));
+  vec3 col = t.rgb * uBrightness * (1.0 - 0.72 * shadow);
+  gl_FragColor = vec4(col, t.a * (1.0 - 0.35 * shadow));
   #include <logdepthbuf_fragment>
 }
 `;

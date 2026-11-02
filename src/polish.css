@@ -1,0 +1,114 @@
+/* A quiet, cinematic layer. Geometry stays untouched; the UI gets out of its way. */
+:root {
+  --gold: #e8cfa4;
+  --gold-dim: #d6bd9380;
+  --line: #d6dfec16;
+  --text: #e4e9f1df;
+  --text-dim: #b6c0cf80;
+  --glass: #0b111c40;
+}
+.glass { border-color: var(--line); box-shadow: 0 14px 40px #0002; backdrop-filter: blur(14px) saturate(110%); }
+#brand h1 { font-size: 26px; letter-spacing: .5em; text-shadow: none; }
+#brand p { font-size: 10px; letter-spacing: .16em; margin-top: 11px; color: #aab6c75e; }
+#timebar { width: 274px; padding: 16px 18px 14px; background: transparent; backdrop-filter: none; border: none; box-shadow: none; text-align: right; }
+#timebar .date { font-size: 17px; letter-spacing: .12em; color: #ded7c8; font-weight: 400; }
+#timebar .row { gap: 12px; margin-top: 13px; }
+#timebar .icon { background: none; border: none; color: #c4cedca0; }
+#timebar .ghost { border: none; font-size: 10px; letter-spacing: .08em; padding: 5px 0; }
+.speedlabel { font-size: 10px; letter-spacing: .08em; }
+#timebar input[type=range] { background: #cdd7ec25; height: 1px; }
+#timebar input[type=range]::-webkit-slider-thumb { width: 7px; height: 7px; box-shadow: none; }
+#hud { padding: 16px 18px; width: 210px; background: transparent; backdrop-filter: none; border: none; box-shadow: none; }
+#hud .hrow label { font-size: 10px; letter-spacing: .1em; }
+#hud input[type=range] { height: 1px; }
+#hud input[type=range]::-webkit-slider-thumb { width: 7px; height: 7px; box-shadow: none; }
+#hud .toggle { border: none; padding: 8px 0; font-size: 10px; letter-spacing: .08em; }
+#hud .toggle.on { background: transparent; color: var(--gold); }
+#hud .toggle.on::after { content: ' ·'; }
+#experience .missionbar { border: none; background: none; backdrop-filter: none; box-shadow: none; padding: 0; gap: 17px; top: 121px; }
+#experience .missionbar button { font-size: 10px; letter-spacing: .1em; padding: 7px 0; color: #b5c0d171; position: relative; }
+#experience .missionbar button::after { content: ''; position: absolute; height: 1px; background: #e8cfa477; bottom: 0; left: 50%; right: 50%; transition: .4s ease; }
+#experience .missionbar button:hover, #experience .missionbar button.active { color: var(--gold); background: none; }
+#experience .missionbar button:hover::after, #experience .missionbar button.active::after { left: 0; right: 0; }
+#experience .missionbar span { margin-left: 4px; }
+#panel { width: 284px; padding: 26px 24px 20px; background: linear-gradient(115deg, #0b111c99, #0b111c20); backdrop-filter: blur(15px); border: none; border-left: 1px solid #e8cfa433; border-radius: 0; box-shadow: none; }
+.pname { flex-direction: column; gap: 8px; }
+.pname h2 { font-size: 29px; letter-spacing: .26em; font-weight: 400; }
+.pname span { font-size: 8px; letter-spacing: .32em; opacity: .7; }
+.poetry { margin: 20px 0 24px; font-size: 14px; line-height: 2.1; color: #d5c8b2a0; }
+#panel details { border-top: 1px solid #d6dfec0c; padding-top: 8px; }
+#p-data { grid-template-columns: 52px 1fr; row-gap: 10px; font-size: 10px; }
+#panel .follow { background: none; border: none; border-bottom: 1px solid #e8cfa43d; border-radius: 0; font-size: 10px; padding: 10px 0; }
+#panel .follow:hover { background: none; letter-spacing: .3em; }
+#panel .view-presets { gap: 12px; margin: 20px 0; }
+#panel .view-presets button { border: none; background: none; padding: 0; font-size: 9px; color: #b5c0d164; }
+#panel .related { gap: 10px; }
+#panel .related button { background: none; border: none; padding: 0; font-size: 10px; }
+#panel details summary { font-size: 9px; }
+#quickbar { gap: 12px; background: none; border: none; backdrop-filter: none; padding: 7px 16px; }
+#quickbar button { font-size: 11px; padding: 8px 5px; position: relative; color: #b5c0d167; }
+#quickbar button:hover { background: none; color: #e3e8f1; }
+#quickbar button.on { background: none; color: var(--gold); }
+#quickbar button.on::after { content: ''; position: absolute; bottom: -2px; left: 50%; width: 2px; height: 2px; border-radius: 50%; background: var(--gold); }
+.label { font-size: 10px; letter-spacing: .18em; color: #d3dcea82; text-shadow: 0 0 5px #000, 0 0 14px #000; padding: 5px 8px; transition: color .5s; }
+.label:hover, .label.sel { color: #ecd4ad; }
+.label.moon { font-size: 9px; }
+#telemetry { border: none; border-left: 1px solid #bcd1e71f; border-radius: 0; background: none; backdrop-filter: none; box-shadow: none; padding: 8px 0 8px 18px; width: 210px; bottom: 175px; opacity: .55; }
+#telemetry span { font-size: 7px; letter-spacing: .25em; }
+#telemetry strong { font-size: 9px; letter-spacing: .16em; }
+#telemetry p { font-size: 9px; line-height: 2; }
+#explorer, #letter { background: #070c16ed; border: 1px solid #d6dfec12; border-radius: 2px; backdrop-filter: blur(20px); padding: 28px; width: 340px; box-shadow: 0 20px 100px #0006; }
+#experience h2 { font-size: 23px; font-weight: 400; letter-spacing: .16em; }
+#experience header small { font-size: 8px; letter-spacing: .24em; }
+#experience .body-result { background: none; border-color: #d6dfec0a; border-radius: 0; border-left-color: #d6dfec16; }
+#experience .body-result strong { font-size: 13px; letter-spacing: .16em; }
+#experience .body-result small { font-size: 9px; }
+#experience input:not([type=range]), #experience textarea { border-radius: 0; border: none; border-bottom: 1px solid #d6dfec20; padding: 12px 0; background: none; }
+#tour-caption { --caption-opacity: 1; opacity: var(--caption-opacity); background: none; padding: 20px; bottom: 124px; text-shadow: 0 2px 14px #000; }
+#tour-caption small { font-size: 9px; color: #d2bd98a6; letter-spacing: .3em; }
+#tour-caption p { font-size: 17px; line-height: 2.1; letter-spacing: .12em; margin-top: 14px; color: #e3e0d8d1; }
+.tour-progress { height: 1px; width: 120px; background: #e4dcc31c; }
+.tour-progress i { background: #e8cfa47a; }
+.tour-actions { margin-top: 20px; opacity: .55; transition: opacity .3s; }
+.tour-actions:hover { opacity: 1; }
+#experience .tour-actions button { background: none; border: none; font-size: 9px; padding: 5px 14px; letter-spacing: .12em; }
+#dedication-display { bottom: 16%; width: min(690px, 84vw); font-size: clamp(19px, 2.3vw, 29px); line-height: 2.1; letter-spacing: .22em; color: #ecd9b9e6; text-shadow: 0 0 30px #b17e332e, 0 2px 12px #000; }
+#dedication-display::after { content: 'S O L'; display: block; font: 8px/2 var(--sans); letter-spacing: .7em; color: #d8c3a154; margin-top: 30px; }
+#experience #exit-cinema { border: none; background: none; font-size: 9px; letter-spacing: .16em; color: #e0d4c05c; }
+.cinema #tour-caption { bottom: 13%; }
+.cinema #dedication-display { animation: letter-in 2.4s both; }
+@keyframes letter-in { from { opacity: 0; filter: blur(6px); letter-spacing: .28em; } to { opacity: 1; filter: none; } }
+#toast { border: none; border-radius: 0; background: #070d17a6; backdrop-filter: blur(16px); box-shadow: none; font: 11px/1.9 var(--serif); letter-spacing: .1em; color: #ddc6a0b5; padding: 12px 24px; top: 175px; }
+#intro { background: radial-gradient(ellipse at 50% 50%, #00061030, #000206b8); }
+.big { font-size: clamp(62px, 11vw, 144px); letter-spacing: .43em; text-indent: .43em; font-weight: 300; color: #e5dfd2; text-shadow: 0 0 90px #eeb46a25; animation: breathe 10s ease-in-out infinite; }
+.sub { margin-top: 28px; font-size: 12px; line-height: 2.3; letter-spacing: .28em; color: #c4cbd05e; }
+.hint { margin-top: 58px; font-size: 9px; letter-spacing: .2em; color: #b1bcc638; }
+/* The instrument readout is opt-in; the rest of the console stays quietly available. */
+#telemetry { opacity: 0; visibility: hidden; }
+#app.instruments #telemetry { opacity: 1; visibility: visible; }
+#hud, #telemetry { transition: opacity .6s ease, visibility .6s; }
+#app.immersive #quickbar { opacity: .45; }
+#app.immersive #quickbar:hover { opacity: 1; }
+@media (min-width: 1200px) { #panel { top: 50%; bottom: auto; transform: translateY(calc(-50% + 12px)); } #panel.show { transform: translateY(-50%); } }
+@media (max-width: 760px) {
+  #timebar { width: auto; padding: 15px 16px; }
+  #timebar .date { font-size: 14px; }
+  #experience .missionbar { gap: 9px; top: 155px; }
+  #experience .missionbar button { font-size: 11px; }
+  #experience .missionbar span { font-size: 9px; letter-spacing: .03em; }
+  #explorer, #letter { padding: 22px; top: 211px; }
+  #panel { top: auto; bottom: 72px; max-height: 47vh; background: #080f1ee0; border-left: none; border-top: 1px solid #e8cfa426; padding: 18px 22px; }
+  .pname { flex-direction: row; }
+  .pname h2 { font-size: 24px; }
+  .poetry { margin: 14px 0; font-size: 12px; }
+  #quickbar { gap: 5px; width: calc(100vw - 18px); }
+  #quickbar button { font-size: 10px; padding: 8px 7px; }
+  #hud { padding: 10px 14px; bottom: 70px; }
+  #tour-caption { bottom: 125px; }
+  #tour-caption p { font-size: 13px; letter-spacing: .06em; }
+  #dedication-display { font-size: 20px; letter-spacing: .12em; bottom: 17%; }
+  #toast { top: 211px; font-size: 10px; width: max-content; max-width: calc(100vw - 36px); }
+  .sub { font-size: 11px; letter-spacing: .13em; padding: 0 12px; }
+  .hint { margin-top: 40px; font-size: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .cinema #dedication-display { animation: none; } }

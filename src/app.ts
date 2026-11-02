@@ -173,7 +173,7 @@ export class App {
       cinema: on => {
         this.isCinema = on;
         this.rig.controls.autoRotate = on && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        this.rig.controls.autoRotateSpeed = 0.35;
+        this.rig.controls.autoRotateSpeed = 0.18;
       },
       capture: message => this.capture(message),
       effects: (bloom, comet) => { this.system.setBloom(bloom); this.system.comet.enabled = comet; },
@@ -191,7 +191,9 @@ export class App {
           this.tourPlayback = { playing: this.playing, speed: this.speedIndex };
           this.playing = true; this.speedIndex = 1;
           this.els.panel.classList.remove('show');
-          document.getElementById('app')!.classList.add('touring');
+            document.getElementById('app')!.classList.add('touring');
+        this.rig.controls.autoRotate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        this.rig.controls.autoRotateSpeed = 0.16;
         } else {
           if (this.tourPlayback) {
             this.playing = this.tourPlayback.playing; this.speedIndex = this.tourPlayback.speed;
@@ -409,6 +411,7 @@ export class App {
       .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`)
       .join('');
 
+    this.updateImmersive();
     this.els.panel.hidden = false;
     requestAnimationFrame(() => this.els.panel.classList.add('show'));
 
@@ -434,6 +437,7 @@ export class App {
     this.rig.release();
     for (const el of this.labels.values()) el.classList.remove('sel');
     for (const btn of this.els.quickbar.querySelectorAll('button')) btn.classList.remove('on');
+    this.updateImmersive();
     setTimeout(() => {
       if (!this.selected) this.els.panel.hidden = true;
     }, 400);
@@ -492,6 +496,10 @@ export class App {
   private skipIntro() {
     this.finishIntro();
     this.rig.frameAll(false);
+  }
+
+  private updateImmersive() {
+    document.getElementById('app')!.classList.toggle('immersive', Boolean(this.selected) && !this.isCinema);
   }
 
   private revealUI() {
@@ -682,7 +690,7 @@ export class App {
     this.els.intro.classList.add('hide');
     this.rig.controls.enabled = true;
     this.revealUI();
-    this.rig.focus(id, { immediate, padding: 5 });
+    this.rig.focus(id, { immediate, padding: 6 });
   }
 
   /** 调试用：设定模拟时刻 */

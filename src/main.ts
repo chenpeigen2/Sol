@@ -1,5 +1,6 @@
 import './style.css';
 import './experience.css';
+import './polish.css';
 import { App } from './app';
 
 const container = document.getElementById('scene')!;
