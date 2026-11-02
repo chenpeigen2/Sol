@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>SOL · 太阳系</title>
+    <meta name="description" content="一颗恒星，八颗行星，以及它们之间漫长的沉默。" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='7' fill='%23ffd9a0'/%3E%3Cellipse cx='16' cy='16' rx='14' ry='4' fill='none' stroke='%23ffd9a0' stroke-opacity='.5'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <div id="scene"></div>
+      <div id="labels"></div>
+
+      <div id="vignette"></div>
+
+      <header id="brand">
+        <h1>SOL</h1>
+        <p>一颗恒星，与它全部的随身物品</p>
+      </header>
+
+      <div id="timebar" class="glass">
+        <div class="date" id="date">—</div>
+        <div class="row">
+          <button id="play" class="icon" title="暂停 / 继续">❚❚</button>
+          <input id="speed" type="range" min="0" max="6" step="1" value="3" />
+          <span id="speedlabel" class="speedlabel">1秒 = 1天</span>
+        </div>
+        <div class="row">
+          <button id="now" class="ghost">回到今天</button>
+          <input id="scrub" type="range" min="-100" max="100" step="0.1" value="0" />
+        </div>
+      </div>
+
+      <div id="hud" class="glass">
+        <div class="hrow">
+          <label for="size">天体尺寸</label>
+          <input id="size" type="range" min="0" max="100" step="1" value="100" />
+        </div>
+        <div class="hrow" id="sizerow">
+          <span class="tag" data-size="1">视觉夸张</span>
+          <span class="tag" data-size="0">真实比例</span>
+        </div>
+        <div class="hrow toggles">
+          <button id="toggle-orbits" class="toggle on">轨道线</button>
+          <button id="toggle-labels" class="toggle on">标签</button>
+          <button id="toggle-trails" class="toggle on">轨迹</button>
+        </div>
+      </div>
+
+      <aside id="panel" class="glass" hidden>
+        <button id="close" class="close" aria-label="关闭">×</button>
+        <div class="pname">
+          <h2 id="p-title">地球</h2>
+          <span id="p-latin">TERRA</span>
+        </div>
+        <p id="p-poetry" class="poetry">—</p>
+        <dl id="p-data"></dl>
+        <button id="p-follow" class="follow">跟随它</button>
+      </aside>
+
+      <nav id="quickbar"></nav>
+
+      <div id="intro">
+        <div class="intro-inner">
+          <h1 class="big">SOL</h1>
+          <p class="sub">一颗恒星，八颗行星，以及它们之间漫长的沉默</p>
+          <p class="hint">拖动旋转 · 滚轮缩放 · 点击天体</p>
+        </div>
+      </div>
+
+      <div id="loading">
+        <div class="loader"></div>
+        <p>正在点亮恒星…</p>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
